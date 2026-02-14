@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RateRocket SimLab — 3분 데모 흐름(애니메이션)</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --panel:#111a33;
+      --panel2:#0f1730;
+      --text:#e9eeff;
+      --muted:#aab6e6;
+      --line:rgba(255,255,255,.08);
+      --accent:#7aa2ff;
+      --accent2:#52e0c4;
+      --warn:#ffcc66;
+      --danger:#ff6b6b;
+      --shadow:0 12px 40px rgba(0,0,0,.35);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 10% 0%, rgba(122,162,255,.22), transparent 60%),
+                  radial-gradient(1000px 700px at 90% 10%, rgba(82,224,196,.18), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+    }
+    .app{ max-width:1200px; margin:0 auto; padding:24px; }
+    header{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:16px; }
+    .title h1{ margin:0; font-size:20px; letter-spacing:.2px; }
+    .title p{ margin:6px 0 0 0; color:var(--muted); font-size:13px; line-height:1.4; }
+    .badge{ display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--line); border-radius:999px; background:rgba(255,255,255,.04); color:var(--muted); font-size:12px; white-space:nowrap; }
+    .dot{ width:10px;height:10px;border-radius:50%; background:var(--accent); box-shadow:0 0 0 6px rgba(122,162,255,.15); }
+    .controls{
+      display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+      padding:12px; border:1px solid var(--line); border-radius: var(--radius);
+      background: rgba(255,255,255,.03); box-shadow: var(--shadow); margin-bottom:16px;
+    }
+    button{
+      appearance:none; border:1px solid var(--line); background: rgba(255,255,255,.04);
+      color:var(--text); padding:10px 12px; border-radius:12px; cursor:pointer;
+      transition: transform .05s ease, background .2s ease, border-color .2s ease;
+      font-weight:600; font-size:13px;
+    }
+    button:hover{ background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); }
+    button:active{ transform: translateY(1px); }
+    .controls .group{ display:flex; align-items:center; gap:10px; padding-right:10px; border-right:1px solid var(--line); }
+    .controls .group:last-child{ border-right:none; padding-right:0; }
+    .label{ font-size:12px; color:var(--muted); margin-right:6px; }
+    input[type="range"]{ width:220px; accent-color: var(--accent); }
+    .time{
+      font-variant-numeric: tabular-nums;
+      font-size:13px; color:var(--text); padding:8px 10px; border:1px solid var(--line);
+      border-radius:12px; background:rgba(0,0,0,.15); min-width:160px; text-align:center;
+    }
+    .layout{ display:flex; gap:16px; align-items:stretch; }
+    aside{
+      width:360px; min-width:320px; border:1px solid var(--line); border-radius: var(--radius);
+      background: rgba(255,255,255,.03); box-shadow: var(--shadow); overflow:hidden;
+    }
+    .timelineHeader{ padding:14px 14px 10px 14px; border-bottom:1px solid var(--line); background: rgba(255,255,255,.02); }
+    .timelineHeader .h{ font-weight:700; font-size:14px; margin:0 0 6px 0; }
+    .timelineHeader .sub{ margin:0; color:var(--muted); font-size:12px; line-height:1.35; }
+    ul.timeline{ list-style:none; padding:0; margin:0; }
+    .step{
+      position:relative; padding:14px; border-bottom:1px solid var(--line);
+      display:flex; gap:12px; align-items:flex-start; cursor:pointer; transition: background .2s ease;
+    }
+    .step:hover{ background: rgba(255,255,255,.03); }
+    .step:last-child{ border-bottom:none; }
+    .step .idx{
+      width:28px; height:28px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+      background: rgba(122,162,255,.10); border:1px solid rgba(122,162,255,.22);
+      color: var(--text); font-weight:800; font-size:12px; flex:0 0 auto;
+    }
+    .step .meta{ flex:1 1 auto; }
+    .step .meta .range{ color:var(--muted); font-size:12px; margin:0 0 3px 0; font-variant-numeric: tabular-nums; }
+    .step .meta .name{ margin:0; font-size:13px; font-weight:800; }
+    .step .meta .desc{ margin:6px 0 0 0; color:var(--muted); font-size:12px; line-height:1.35; }
+    .step.active{ background: rgba(122,162,255,.10); }
+    .step.active .idx{ background: rgba(82,224,196,.14); border-color: rgba(82,224,196,.35); }
+    .step.active::before{
+      content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+      background: linear-gradient(180deg, var(--accent2), var(--accent));
+    }
+    main{
+      flex:1 1 auto; border:1px solid var(--line); border-radius: var(--radius);
+      background: rgba(255,255,255,.03); box-shadow: var(--shadow);
+      overflow:hidden; position:relative; min-height:520px;
+    }
+    .stageHeader{
+      padding:14px 14px 10px 14px; border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      background: rgba(255,255,255,.02);
+    }
+    .stageHeader .left .kicker{ font-size:12px; color:var(--muted); margin:0 0 4px 0; }
+    .stageHeader .left .big{ margin:0; font-weight:900; font-size:15px; letter-spacing:.2px; }
+    .progressWrap{ padding:0 14px 14px 14px; background: rgba(255,255,255,.02); border-bottom:1px solid var(--line); }
+    .progressBar{
+      height:10px; border-radius:999px; background: rgba(255,255,255,.07);
+      border:1px solid var(--line); overflow:hidden; position:relative;
+    }
+    .progressBar > span{
+      position:absolute; left:0; top:0; bottom:0; width:0%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      border-radius:999px; transition: width .12s linear;
+    }
+    .scenes{ position:relative; height: calc(100% - 110px); padding:18px; }
+    .scene{
+      position:absolute; inset:18px; border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid var(--line); padding:18px; opacity:0; transform: translateY(10px);
+      pointer-events:none; transition: opacity .25s ease, transform .25s ease; overflow:hidden;
+    }
+    .scene.active{ opacity:1; transform: translateY(0); pointer-events:auto; }
+    .scene h3{ margin:0 0 10px 0; font-size:16px; letter-spacing:.2px; }
+    .scene p{ margin:0 0 14px 0; color:var(--muted); line-height:1.5; font-size:13px; }
+    .grid2{
+      display:grid; grid-template-columns: 1.2fr .8fr; gap:14px; align-items:stretch;
+      height: calc(100% - 70px);
+    }
+    .card{
+      border:1px solid var(--line); border-radius:16px; background: rgba(0,0,0,.12);
+      padding:14px; overflow:hidden;
+    }
+    .cardTitle{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .cardTitle .t{ font-weight:900; font-size:13px; margin:0; }
+    .pill{
+      font-size:11px; color:var(--muted); border:1px solid var(--line);
+      background: rgba(255,255,255,.04); border-radius:999px; padding:6px 8px; white-space:nowrap;
+    }
+
+    /* Scene 1: Morning Brief */
+    .signals{ display:flex; flex-wrap:wrap; gap:10px; }
+    .signal{
+      border:1px solid var(--line); background: rgba(255,255,255,.04);
+      border-radius: 14px; padding:10px 12px; display:flex; gap:10px;
+      align-items:center; min-width: 190px; opacity:.85; transform: translateY(6px);
+    }
+    .signal b{ font-size:13px; }
+    .signal span{ font-size:12px; color:var(--muted); display:block; margin-top:2px; }
+    .icon{
+      width:34px;height:34px;border-radius:12px; display:flex;align-items:center;justify-content:center;
+      background: rgba(122,162,255,.15); border:1px solid rgba(122,162,255,.25); flex:0 0 auto;
+    }
+    .icon.green{ background: rgba(82,224,196,.12); border-color: rgba(82,224,196,.25); }
+    .icon.warn{ background: rgba(255,204,102,.12); border-color: rgba(255,204,102,.25); }
+    @keyframes pop { from{ opacity:0; transform: translateY(10px) scale(.98); } to{ opacity:1; transform: translateY(0) scale(1); } }
+    .scene1.active .signal:nth-child(1){ animation: pop .35s ease-out .05s both; }
+    .scene1.active .signal:nth-child(2){ animation: pop .35s ease-out .15s both; }
+    .scene1.active .signal:nth-child(3){ animation: pop .35s ease-out .25s both; }
+
+    /* Scene 2: SimLab */
+    .tabs{ display:flex; gap:10px; margin-bottom:12px; }
+    .tab{
+      flex:1 1 auto; border:1px solid var(--line); background: rgba(255,255,255,.03);
+      border-radius:14px; padding:10px 12px; font-size:12px; color:var(--muted);
+      text-align:center; position:relative; overflow:hidden;
+    }
+    .tab.active{ color: var(--text); border-color: rgba(122,162,255,.35); background: rgba(122,162,255,.10); }
+    .calendar{ display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-top:10px; }
+    .day{ height:36px; border-radius:10px; border:1px solid var(--line); background: rgba(255,255,255,.03); position:relative; overflow:hidden; }
+    .day::after{
+      content:""; position:absolute; left:-40%; top:0; bottom:0; width:40%;
+      background: linear-gradient(90deg, transparent, rgba(122,162,255,.20), transparent);
+      transform: skewX(-15deg); opacity:0;
+    }
+    .scene2.active .day::after{ animation: sweep 1.4s ease-in-out infinite; opacity:1; }
+    @keyframes sweep{ 0%{ left:-40%; } 70%{ left:110%; } 100%{ left:110%; } }
+
+    /* Scene 3: Date click */
+    .priceBox{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:10px;
+      padding:12px; border-radius:14px; border:1px solid var(--line);
+      background: rgba(255,255,255,.03); margin-bottom:12px;
+    }
+    .priceBox .bigPrice{ font-size:22px; font-weight:900; letter-spacing:.3px; }
+    .priceBox .small{ color:var(--muted); font-size:12px; }
+    .bars{ display:flex; flex-direction:column; gap:10px; margin-top:8px; }
+    .barRow{ display:grid; grid-template-columns: 110px 1fr 44px; gap:10px; align-items:center; font-size:12px; color:var(--muted); }
+    .bar{ height:10px; border-radius:999px; background: rgba(255,255,255,.07); border:1px solid var(--line); overflow:hidden; }
+    .bar > span{ display:block; height:100%; width:0%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius:999px; }
+    .scene3.active .bar > span{ animation: grow .8s ease-out .05s both; }
+    @keyframes grow { from { width:0%; } to { width: var(--w); } }
+    .warnBox{
+      margin-top:12px; padding:10px 12px; border-radius:14px; border:1px dashed rgba(255,204,102,.35);
+      background: rgba(255,204,102,.08); color: var(--text); font-size:12px;
+    }
+
+    /* Scene 4: Override */
+    .table{ width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.02); }
+    .table th, .table td{ padding:10px 12px; border-bottom:1px solid var(--line); font-size:12px; color:var(--muted); }
+    .table th{ color: var(--text); background: rgba(255,255,255,.03); text-align:left; font-weight:800; }
+    .table tr:last-child td{ border-bottom:none; }
+    .rowHighlight{ position:relative; }
+    .rowHighlight::after{ content:""; position:absolute; inset:0; background: rgba(82,224,196,.10); opacity:0; }
+    .scene4.active .rowHighlight::after{ animation: flash 1.2s ease-in-out .3s both; }
+    @keyframes flash{ 0%{ opacity:0; } 30%{ opacity:1; } 100%{ opacity:0; } }
+    .editPencil{
+      display:inline-flex; width:18px;height:18px; border-radius:6px; align-items:center;justify-content:center;
+      border:1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.18); margin-left:8px; color:var(--muted); font-weight:900;
+    }
+
+    /* Scene 5: Action Log */
+    .logList{ display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+    .logItem{
+      border:1px solid var(--line); border-radius:14px; padding:10px 12px; background: rgba(255,255,255,.03);
+      display:flex; align-items:center; justify-content:space-between; gap:10px; opacity:.9; transform: translateY(8px);
+    }
+    .scene5.active .logItem.new{ animation: pop .4s ease-out .15s both; }
+    .logItem b{ font-size:12px; }
+    .logItem span{ font-size:12px; color:var(--muted); }
+    .replay{
+      display:inline-flex; gap:8px; align-items:center; border-radius:999px; padding:8px 10px;
+      border:1px solid rgba(122,162,255,.35); background: rgba(122,162,255,.10); color: var(--text);
+      font-size:12px; font-weight:800;
+    }
+    .footerHint{
+      position:absolute; left:18px; right:18px; bottom:14px;
+      color:rgba(233,238,255,.55); font-size:11px; display:flex; justify-content:space-between; gap:10px;
+    }
+    .footerHint code{
+      color:rgba(233,238,255,.72); background: rgba(0,0,0,.20); border:1px solid var(--line);
+      padding:2px 6px; border-radius:8px;
+    }
+    @media (max-width: 980px){
+      .layout{ flex-direction:column; }
+      aside{ width:100%; }
+      main{ min-height:520px; }
+      input[type="range"]{ width:180px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <h1>RateRocket SimLab — 3분 데모 흐름(HTML 애니메이션)</h1>
+        <p>
+          0:00~3:00 타임라인을 단계별로 하이라이트하고, 각 단계 장면(Scene)이 전환되며 내부 요소가 애니메이션됩니다.
+          기본은 6x 압축 재생(약 30초).
+        </p>
+      </div>
+      <div class="badge"><span class="dot"></span> Demo Timeline Animation</div>
+    </header>
+
+    <div class="controls">
+      <div class="group">
+        <button id="btnPlay">Play</button>
+        <button id="btnReset">Reset</button>
+      </div>
+
+      <div class="group">
+        <span class="label">속도(압축)</span>
+        <input id="speed" type="range" min="1" max="12" value="6" step="1" />
+        <span class="badge" id="speedLabel">6x (약 30초)</span>
+      </div>
+
+      <div class="group">
+        <span class="label">Seek</span>
+        <input id="seek" type="range" min="0" max="180" value="0" step="0.1" />
+      </div>
+
+      <div class="time" id="timeLabel">00:00 / 03:00</div>
+    </div>
+
+    <div class="layout">
+      <aside>
+        <div class="timelineHeader">
+          <p class="h">3분 데모 타임라인</p>
+          <p class="sub">좌측 단계 클릭 시 해당 구간으로 이동합니다.</p>
+        </div>
+        <ul class="timeline" id="timeline"></ul>
+      </aside>
+
+      <main>
+        <div class="stageHeader">
+          <div class="left">
+            <p class="kicker">현재 단계</p>
+            <p class="big" id="stageTitle">—</p>
+          </div>
+          <div class="badge" id="rangeTitle">—</div>
+        </div>
+
+        <div class="progressWrap">
+          <div class="progressBar"><span id="progress"></span></div>
+        </div>
+
+        <div class="scenes">
+          <section class="scene scene1" data-scene="0">
+            <h3>Morning Brief: 오늘 바뀐 신호 3개</h3>
+            <p>이벤트/항공/경쟁가/날씨 중 “오늘 달라진 것” 3개만 보여주고, 결정에 필요한 맥락을 30초 안에 끝냅니다.</p>
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Today’s Signals</p>
+                  <span class="pill">3 highlights only</span>
+                </div>
+                <div class="signals">
+                  <div class="signal">
+                    <div class="icon warn">🎫</div>
+                    <div>
+                      <b>Event Spike</b>
+                      <span>주말 대형 공연/행사 예정</span>
+                    </div>
+                  </div>
+                  <div class="signal">
+                    <div class="icon green">✈️</div>
+                    <div>
+                      <b>Flight Index ↑</b>
+                      <span>주요 출발지 운임 상승</span>
+                    </div>
+                  </div>
+                  <div class="signal">
+                    <div class="icon">🏨</div>
+                    <div>
+                      <b>Comp Price ↑</b>
+                      <span>경쟁가 상단 이동 감지</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Outcome</p>
+                  <span class="pill">30초 결론</span>
+                </div>
+                <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.5">
+                  “오늘은 수요 시그널이 강하고 경쟁가가 올라,
+                  Base/Aggressive 시나리오를 먼저 비교하는 게 합리적입니다.”
+                </p>
+                <div style="margin-top:12px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900;">Next</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:4px;">SimLab에서 30일 3시나리오 생성</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “오늘 바뀐 3개만”이 핵심</span>
+              <span>Shortcut: <code>Space</code> Play/Pause</span>
+            </div>
+          </section>
+
+          <section class="scene scene2" data-scene="1">
+            <h3>SimLab: D+1~D+30, 3시나리오 생성 → 캘린더 비교</h3>
+            <p>보수/중립/공격(3개 risk) 시나리오를 30일 캘린더로 즉시 생성해, 사람이 “비교→선택”에만 집중하게 합니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Scenario Tabs</p>
+                  <span class="pill">Conservative / Base / Aggressive</span>
+                </div>
+
+                <div class="tabs">
+                  <div class="tab active" id="tabC">Conservative</div>
+                  <div class="tab" id="tabB">Base</div>
+                  <div class="tab" id="tabA">Aggressive</div>
+                </div>
+
+                <div style="color:var(--muted); font-size:12px; line-height:1.5;">
+                  동일 구간(D+1~D+30)을 세 방식으로 계산해 “가격 캘린더”로 나란히 비교합니다.
+                </div>
+
+                <div class="calendar">
+                  <div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div>
+                  <div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div>
+                  <div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div>
+                  <div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div><div class="day"></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Decision Aid</p>
+                  <span class="pill">비교가 핵심</span>
+                </div>
+                <p style="margin:0;color:var(--muted);font-size:12px;line-height:1.5">
+                  MVP는 “정답 예측”이 아니라, 30일을 한 번에 보고 빠르게 선택하게 하는 데 집중합니다.
+                </p>
+
+                <div style="margin-top:12px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900;">Next</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:4px;">
+                    날짜 클릭 → 추천가/기여도/경고 확인
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “30일 캘린더 + 3탭”이 데모 임팩트 포인트</span>
+              <span>Seek: 상단 슬라이더로 단계 이동</span>
+            </div>
+          </section>
+
+          <section class="scene scene3" data-scene="2">
+            <h3>날짜 클릭: 추천가 + 기여도(가중치) + 경고(결측/커버리지)</h3>
+            <p>선택한 날짜에 대해 “왜 이 가격인지”를 숫자/바(기여도)로 즉시 보여주고, 데이터 결측/커버리지를 경고로 표시합니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Selected Date</p>
+                  <span class="pill">D+9 (예시)</span>
+                </div>
+
+                <div class="priceBox">
+                  <div>
+                    <div class="small">Recommended</div>
+                    <div class="bigPrice">₩ 165,000</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="small">combined_score</div>
+                    <div style="font-weight:900; font-size:18px;">72.4</div>
+                  </div>
+                </div>
+
+                <div class="bars">
+                  <div class="barRow">
+                    <div>travel_score</div>
+                    <div class="bar"><span style="--w:30%"></span></div>
+                    <div style="text-align:right;">30%</div>
+                  </div>
+                  <div class="barRow">
+                    <div>occupancy</div>
+                    <div class="bar"><span style="--w:50%"></span></div>
+                    <div style="text-align:right;">50%</div>
+                  </div>
+                  <div class="barRow">
+                    <div>air_norm</div>
+                    <div class="bar"><span style="--w:10%"></span></div>
+                    <div style="text-align:right;">10%</div>
+                  </div>
+                  <div class="barRow">
+                    <div>lux_norm</div>
+                    <div class="bar"><span style="--w:10%"></span></div>
+                    <div style="text-align:right;">10%</div>
+                  </div>
+                </div>
+
+                <div class="warnBox">
+                  경고 예시: 경쟁가 커버리지 80% 미만 → “보수 모드” 권고
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Signals Snapshot</p>
+                  <span class="pill">근거 스냅샷</span>
+                </div>
+                <ul style="margin:0; padding-left:18px; color:var(--muted); font-size:12px; line-height:1.6;">
+                  <li>날씨: 맑음 / 22°C</li>
+                  <li>공연: 1건 (가중치 상향)</li>
+                  <li>항공: 지수 +0.12 (7일 대비)</li>
+                  <li>경쟁가: 상단 분위수 이동</li>
+                </ul>
+
+                <div style="margin-top:12px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900;">Next</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:4px;">
+                    선택 + 특정 2–3일만 오버라이드
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “기여도 + 경고”가 신뢰를 만든다</span>
+              <span>Note: MVP KPI는 정확도가 아니라 결정시간/로그</span>
+            </div>
+          </section>
+
+          <section class="scene scene4" data-scene="3">
+            <h3>선택 + 오버라이드: 특정 2–3일만 수동 조정</h3>
+            <p>현장에서는 항상 예외가 있습니다. “전체를 손보게” 하지 말고, 딱 필요한 날짜만 조정하게 해 의사결정을 빠르게 만듭니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">30일 캘린더 중 일부(예시)</p>
+                  <span class="pill">override 2–3 days</span>
+                </div>
+
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>날짜</th>
+                      <th>추천가</th>
+                      <th>오버라이드</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>D+8</td>
+                      <td>₩ 160,000</td>
+                      <td>—</td>
+                    </tr>
+                    <tr class="rowHighlight">
+                      <td>D+9</td>
+                      <td>₩ 165,000</td>
+                      <td>₩ 170,000 <span class="editPencil">✎</span></td>
+                    </tr>
+                    <tr>
+                      <td>D+10</td>
+                      <td>₩ 165,000</td>
+                      <td>—</td>
+                    </tr>
+                    <tr class="rowHighlight">
+                      <td>D+11</td>
+                      <td>₩ 155,000</td>
+                      <td>₩ 150,000 <span class="editPencil">✎</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <div style="margin-top:12px; color:var(--muted); font-size:12px;">
+                  예: 단체 문의/OTA 프로모션/현장 이벤트 등 “사람만 아는 정보”는 오버라이드로 반영
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Decision</p>
+                  <span class="pill">Scenario selected</span>
+                </div>
+                <div style="padding:12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900;">선택 시나리오: Base (risk=2)</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:6px; line-height:1.5;">
+                    “전체는 Base로 가되, D+9은 수요 강해 +5k, D+11은 리스크 있어 -5k”
+                  </div>
+                </div>
+
+                <div style="margin-top:12px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900;">Next</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:4px;">
+                    Action Log 저장 → Replay로 재현
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “전체를 자동 + 일부만 수동”이 실무 UX</span>
+              <span>Output: Action Log에 스냅샷 저장</span>
+            </div>
+          </section>
+
+          <section class="scene scene5" data-scene="4">
+            <h3>Action Log 저장: 근거 스냅샷 저장 → Replay로 즉시 재현</h3>
+            <p>추천을 ‘봤다’에서 끝내지 않고, 결정/근거/오버라이드를 기록해 다음 주 보고서/검증에 재사용합니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Action Log</p>
+                  <span class="pill">Saved decisions</span>
+                </div>
+
+                <div class="logList">
+                  <div class="logItem">
+                    <div>
+                      <b>지난주: Base 시나리오</b><br />
+                      <span>D+1~D+30 / override 1일</span>
+                    </div>
+                    <span>Saved</span>
+                  </div>
+
+                  <div class="logItem new">
+                    <div>
+                      <b>오늘: Base + 2일 오버라이드</b><br />
+                      <span>D+1~D+30 / 근거 스냅샷 포함</span>
+                    </div>
+                    <span>Now</span>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px; color:var(--muted); font-size:12px; line-height:1.5;">
+                  Action Log는 “운영의 증거”입니다. 합의된 KPI(결정 시간/로그 채택률)를 측정할 수 있습니다.
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Replay</p>
+                  <span class="pill">Explainable</span>
+                </div>
+
+                <div style="padding:12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900; margin-bottom:8px;">저장된 근거</div>
+                  <ul style="margin:0; padding-left:18px; color:var(--muted); font-size:12px; line-height:1.6;">
+                    <li>선택 시나리오: Base (risk=2)</li>
+                    <li>오버라이드: D+9 +5k, D+11 -5k</li>
+                    <li>근거: 이벤트/항공/경쟁가/날씨 스냅샷</li>
+                  </ul>
+                </div>
+
+                <div style="margin-top:14px;">
+                  <span class="replay">▶ Replay Now</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “Replay 가능한 결정”이 B2B 신뢰 포인트</span>
+              <span>Done: 데모 3분 완주</span>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const steps = [
+      { idx: 1, title: "Morning Brief", range: "0:00–0:30", start: 0, end: 30,
+        desc: "오늘 바뀐 신호(이벤트/항공/경쟁가/날씨) 3개만 보여주기", scene: 0 },
+      { idx: 2, title: "SimLab (30일 3시나리오)", range: "0:30–1:30", start: 30, end: 90,
+        desc: "D+1~D+30, 보수/중립/공격 3시나리오 생성 → 캘린더 비교", scene: 1 },
+      { idx: 3, title: "날짜 클릭(근거/경고)", range: "1:30–2:20", start: 90, end: 140,
+        desc: "추천가 + 기여도 + 경고(결측/커버리지) 확인", scene: 2 },
+      { idx: 4, title: "선택 + 오버라이드", range: "2:20–2:50", start: 140, end: 170,
+        desc: "특정 2–3일만 수동 조정(실무 상황 반영)", scene: 3 },
+      { idx: 5, title: "Action Log 저장 + Replay", range: "2:50–3:00", start: 170, end: 180,
+        desc: "근거 스냅샷 저장 → Replay 화면으로 즉시 재현", scene: 4 }
+    ];
+    const total = 180;
+
+    const timelineEl = document.getElementById("timeline");
+    const stageTitleEl = document.getElementById("stageTitle");
+    const rangeTitleEl = document.getElementById("rangeTitle");
+    const progressEl = document.getElementById("progress");
+    const timeLabelEl = document.getElementById("timeLabel");
+    const btnPlay = document.getElementById("btnPlay");
+    const btnReset = document.getElementById("btnReset");
+    const speedInput = document.getElementById("speed");
+    const speedLabel = document.getElementById("speedLabel");
+    const seek = document.getElementById("seek");
+    const scenes = Array.from(document.querySelectorAll(".scene"));
+
+    const stepNodes = steps.map(s => {
+      const li = document.createElement("li");
+      li.className = "step";
+      li.dataset.start = s.start;
+      li.dataset.end = s.end;
+      li.dataset.scene = s.scene;
+      li.innerHTML = `
+        <div class="idx">${s.idx}</div>
+        <div class="meta">
+          <p class="range">${s.range}</p>
+          <p class="name">${s.title}</p>
+          <p class="desc">${s.desc}</p>
+        </div>
+      `;
+      li.addEventListener("click", () => { setTime(s.start + 0.01); pause(); render(); });
+      timelineEl.appendChild(li);
+      return li;
+    });
+
+    let playing = false;
+    let lastNow = null;
+    let t = 0;
+    let speed = Number(speedInput.value);
+
+    function fmt(sec){
+      const s = Math.max(0, Math.min(total, sec));
+      const m = Math.floor(s / 60);
+      const r = Math.floor(s % 60);
+      return `${String(m).padStart(2,"0")}:${String(r).padStart(2,"0")}`;
+    }
+
+    function updateSpeedLabel(){
+      speed = Number(speedInput.value);
+      const realSeconds = Math.round(total / speed);
+      speedLabel.textContent = `${speed}x (약 ${realSeconds}초)`;
+    }
+
+    speedInput.addEventListener("input", () => { updateSpeedLabel(); render(); });
+
+    seek.addEventListener("input", () => { setTime(Number(seek.value)); pause(); render(); });
+
+    function setTime(sec){
+      t = Math.max(0, Math.min(total, sec));
+      seek.value = t;
+    }
+
+    function findActiveStep(sec){
+      if (sec >= total) return steps.length - 1;
+      return steps.findIndex(s => sec >= s.start && sec < s.end);
+    }
+
+    function activateScene(sceneIdx){
+      scenes.forEach(el => el.classList.toggle("active", Number(el.dataset.scene) === sceneIdx));
+    }
+
+    function updateSimLabTabs(active){
+      const tabC = document.getElementById("tabC");
+      const tabB = document.getElementById("tabB");
+      const tabA = document.getElementById("tabA");
+      if (!tabC || !tabB || !tabA) return;
+
+      if (!active){
+        tabC.classList.add("active");
+        tabB.classList.remove("active");
+        tabA.classList.remove("active");
+        return;
+      }
+      const phase = (t - 30) / 60;
+      const k = Math.floor(phase * 3);
+      tabC.classList.toggle("active", k === 0);
+      tabB.classList.toggle("active", k === 1);
+      tabA.classList.toggle("active", k >= 2);
+    }
+
+    function render(){
+      const idx = findActiveStep(t);
+      const step = steps[Math.max(0, idx)];
+      stepNodes.forEach((node, i) => node.classList.toggle("active", i === idx));
+      stageTitleEl.textContent = step ? step.title : "—";
+      rangeTitleEl.textContent = step ? step.range : "—";
+      progressEl.style.width = `${(t / total) * 100}%`;
+      timeLabelEl.textContent = `${fmt(t)} / ${fmt(total)}`;
+      if (step) activateScene(step.scene);
+      updateSimLabTabs(step && step.scene === 1);
+    }
+
+    function loop(now){
+      if (!playing) return;
+      if (lastNow == null) lastNow = now;
+      const dt = (now - lastNow) / 1000;
+      lastNow = now;
+      setTime(t + dt * speed);
+      if (t >= total){
+        setTime(total);
+        pause();
+        render();
+        return;
+      }
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    function play(){
+      if (playing) return;
+      playing = true;
+      btnPlay.textContent = "Pause";
+      lastNow = null;
+      requestAnimationFrame(loop);
+    }
+
+    function pause(){
+      playing = false;
+      btnPlay.textContent = "Play";
+      lastNow = null;
+    }
+
+    btnPlay.addEventListener("click", () => { if (playing) pause(); else play(); });
+    btnReset.addEventListener("click", () => { pause(); setTime(0); render(); });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space"){
+        e.preventDefault();
+        if (playing) pause(); else play();
+      }
+    });
+
+    updateSpeedLabel();
+    render();
+  </script>
+</body>
+</html>
