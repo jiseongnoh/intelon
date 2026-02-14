@@ -1,0 +1,1408 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RateRocket SimLab — Multi-Agent + Persona Vote Demo</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --text:#e9eeff;
+      --muted:#aab6e6;
+      --line:rgba(255,255,255,.08);
+      --accent:#7aa2ff;
+      --accent2:#52e0c4;
+      --warn:#ffcc66;
+      --danger:#ff6b6b;
+      --shadow:0 12px 40px rgba(0,0,0,.35);
+      --radius:16px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 10% 0%, rgba(122,162,255,.22), transparent 60%),
+                  radial-gradient(1000px 700px at 90% 10%, rgba(82,224,196,.18), transparent 60%),
+                  var(--bg);
+      color: var(--text);
+    }
+    .app{ max-width:1250px; margin:0 auto; padding:24px; }
+
+    header{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+      margin-bottom:14px;
+    }
+    .title h1{ margin:0; font-size:20px; letter-spacing:.2px; }
+    .title p{ margin:6px 0 0 0; color:var(--muted); font-size:13px; line-height:1.45; max-width:920px;}
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border:1px solid var(--line); border-radius:999px;
+      background:rgba(255,255,255,.04); color:var(--muted); font-size:12px; white-space:nowrap;
+    }
+    .dot{
+      width:10px;height:10px;border-radius:50%;
+      background:var(--accent2);
+      box-shadow:0 0 0 6px rgba(82,224,196,.15);
+    }
+
+    .controls{
+      display:flex; flex-wrap:wrap; align-items:center; gap:10px;
+      padding:12px; border:1px solid var(--line); border-radius: var(--radius);
+      background: rgba(255,255,255,.03); box-shadow: var(--shadow);
+      margin-bottom:16px;
+    }
+    button{
+      appearance:none; border:1px solid var(--line); background: rgba(255,255,255,.04);
+      color:var(--text); padding:10px 12px; border-radius:12px; cursor:pointer;
+      transition: transform .05s ease, background .2s ease, border-color .2s ease;
+      font-weight:700; font-size:13px;
+    }
+    button:hover{ background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); }
+    button:active{ transform: translateY(1px); }
+    .controls .group{ display:flex; align-items:center; gap:10px; padding-right:10px; border-right:1px solid var(--line); }
+    .controls .group:last-child{ border-right:none; padding-right:0; }
+    .label{ font-size:12px; color:var(--muted); margin-right:6px; }
+    input[type="range"]{ width:220px; accent-color: var(--accent); }
+    .time{
+      font-variant-numeric: tabular-nums;
+      font-size:13px; color:var(--text);
+      padding:8px 10px; border:1px solid var(--line); border-radius:12px;
+      background:rgba(0,0,0,.15); min-width:170px; text-align:center;
+    }
+    .toggle{
+      display:flex; align-items:center; gap:8px;
+      border:1px solid var(--line); background:rgba(255,255,255,.04);
+      padding:8px 10px; border-radius:12px;
+      font-size:12px; color:var(--muted);
+    }
+    .toggle input{ accent-color: var(--accent2); }
+
+    .layout{ display:flex; gap:16px; align-items:stretch; }
+    aside{
+      width:360px; min-width:320px;
+      border:1px solid var(--line); border-radius: var(--radius);
+      background: rgba(255,255,255,.03); box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .timelineHeader{ padding:14px 14px 10px 14px; border-bottom:1px solid var(--line); background: rgba(255,255,255,.02); }
+    .timelineHeader .h{ font-weight:800; font-size:14px; margin:0 0 6px 0; }
+    .timelineHeader .sub{ margin:0; color:var(--muted); font-size:12px; line-height:1.35; }
+    ul.timeline{ list-style:none; padding:0; margin:0; }
+    .step{
+      position:relative; padding:14px; border-bottom:1px solid var(--line);
+      display:flex; gap:12px; align-items:flex-start; cursor:pointer; transition: background .2s ease;
+    }
+    .step:hover{ background: rgba(255,255,255,.03); }
+    .step:last-child{ border-bottom:none; }
+    .step .idx{
+      width:28px; height:28px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+      background: rgba(122,162,255,.10); border:1px solid rgba(122,162,255,.22);
+      color: var(--text); font-weight:900; font-size:12px; flex:0 0 auto;
+    }
+    .step .meta{ flex:1 1 auto; }
+    .step .meta .range{ color:var(--muted); font-size:12px; margin:0 0 3px 0; font-variant-numeric: tabular-nums; }
+    .step .meta .name{ margin:0; font-size:13px; font-weight:900; }
+    .step .meta .desc{ margin:6px 0 0 0; color:var(--muted); font-size:12px; line-height:1.35; }
+    .step.active{ background: rgba(82,224,196,.10); }
+    .step.active .idx{ background: rgba(82,224,196,.16); border-color: rgba(82,224,196,.35); }
+    .step.active::before{
+      content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
+      background: linear-gradient(180deg, var(--accent2), var(--accent));
+    }
+
+    main{
+      flex:1 1 auto;
+      border:1px solid var(--line); border-radius: var(--radius);
+      background: rgba(255,255,255,.03); box-shadow: var(--shadow);
+      overflow:hidden; position:relative; min-height:585px;
+    }
+    .stageHeader{
+      padding:14px 14px 10px 14px; border-bottom:1px solid var(--line);
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      background: rgba(255,255,255,.02);
+    }
+    .stageHeader .left .kicker{ font-size:12px; color:var(--muted); margin:0 0 4px 0; }
+    .stageHeader .left .big{ margin:0; font-weight:900; font-size:15px; letter-spacing:.2px; }
+    .stageHeader .right{ display:flex; gap:10px; align-items:center; }
+    .tag{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border:1px solid var(--line);
+      border-radius:999px; background:rgba(0,0,0,.14);
+      color:var(--muted); font-size:12px; white-space:nowrap;
+    }
+    .tag .miniDot{
+      width:8px;height:8px;border-radius:50%;
+      background:var(--accent);
+      box-shadow:0 0 0 5px rgba(122,162,255,.15);
+    }
+    .tag.agent .miniDot{ background: var(--accent2); box-shadow:0 0 0 5px rgba(82,224,196,.15); }
+
+    .progressWrap{ padding:0 14px 14px 14px; background: rgba(255,255,255,.02); border-bottom:1px solid var(--line); }
+    .progressBar{
+      height:10px; border-radius:999px; background: rgba(255,255,255,.07);
+      border:1px solid var(--line); overflow:hidden; position:relative;
+    }
+    .progressBar > span{
+      position:absolute; left:0; top:0; bottom:0; width:0%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      border-radius:999px; transition: width .12s linear;
+    }
+
+    .scenes{ position:relative; height: calc(100% - 116px); padding:18px; }
+    .scene{
+      position:absolute; inset:18px; border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+      border:1px solid var(--line); padding:18px; opacity:0; transform: translateY(10px);
+      pointer-events:none; transition: opacity .25s ease, transform .25s ease; overflow:hidden;
+    }
+    .scene.active{ opacity:1; transform: translateY(0); pointer-events:auto; }
+    .scene h3{ margin:0 0 10px 0; font-size:16px; letter-spacing:.2px; }
+    .scene p{ margin:0 0 14px 0; color:var(--muted); line-height:1.5; font-size:13px; }
+
+    .grid2{
+      display:grid; grid-template-columns: 1.05fr .95fr; gap:14px; align-items:stretch;
+      height: calc(100% - 70px);
+    }
+    .card{
+      border:1px solid var(--line); border-radius:16px; background: rgba(0,0,0,.12);
+      padding:14px; overflow:hidden;
+    }
+    .cardTitle{ display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .cardTitle .t{ font-weight:900; font-size:13px; margin:0; }
+    .pill{
+      font-size:11px; color:var(--muted); border:1px solid var(--line);
+      background: rgba(255,255,255,.04); border-radius:999px; padding:6px 8px; white-space:nowrap;
+    }
+
+    /* UI mini components */
+    .signals{ display:flex; flex-wrap:wrap; gap:10px; }
+    .signal{
+      border:1px solid var(--line); background: rgba(255,255,255,.04);
+      border-radius: 14px; padding:10px 12px; display:flex; gap:10px;
+      align-items:center; min-width: 215px; opacity:.95;
+    }
+    .signal b{ font-size:13px; }
+    .signal span{ font-size:12px; color:var(--muted); display:block; margin-top:2px; }
+    .icon{
+      width:34px;height:34px;border-radius:12px; display:flex;align-items:center;justify-content:center;
+      background: rgba(122,162,255,.15); border:1px solid rgba(122,162,255,.25); flex:0 0 auto;
+    }
+    .icon.green{ background: rgba(82,224,196,.12); border-color: rgba(82,224,196,.25); }
+    .icon.warn{ background: rgba(255,204,102,.12); border-color: rgba(255,204,102,.25); }
+
+    .tabs{ display:flex; gap:10px; margin-bottom:10px; }
+    .tab{
+      flex:1 1 auto; border:1px solid var(--line); background: rgba(255,255,255,.03);
+      border-radius:14px; padding:10px 12px; font-size:12px; color:var(--muted);
+      text-align:center; position:relative; overflow:hidden;
+    }
+    .tab.active{ color: var(--text); border-color: rgba(122,162,255,.35); background: rgba(122,162,255,.10); }
+    .calendar{ display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-top:10px; }
+    .day{ height:34px; border-radius:10px; border:1px solid var(--line); background: rgba(255,255,255,.03); }
+    .day.hot{ background: rgba(255,204,102,.10); border-color: rgba(255,204,102,.20); }
+    .day.mid{ background: rgba(122,162,255,.10); border-color: rgba(122,162,255,.22); }
+    .day.cool{ background: rgba(82,224,196,.10); border-color: rgba(82,224,196,.22); }
+
+    .priceBox{
+      display:flex; align-items:flex-end; justify-content:space-between; gap:10px;
+      padding:12px; border-radius:14px; border:1px solid var(--line);
+      background: rgba(255,255,255,.03); margin-bottom:10px;
+    }
+    .priceBox .bigPrice{ font-size:22px; font-weight:900; letter-spacing:.3px; }
+    .priceBox .small{ color:var(--muted); font-size:12px; }
+
+    .bars{ display:flex; flex-direction:column; gap:10px; margin-top:8px; }
+    .barRow{ display:grid; grid-template-columns: 110px 1fr 44px; gap:10px; align-items:center; font-size:12px; color:var(--muted); }
+    .bar{ height:10px; border-radius:999px; background: rgba(255,255,255,.07); border:1px solid var(--line); overflow:hidden; }
+    .bar > span{ display:block; height:100%; width:0%; background: linear-gradient(90deg, var(--accent2), var(--accent)); border-radius:999px; }
+    .scene3.active .bar > span{ animation: grow .8s ease-out .05s both; }
+    @keyframes grow { from { width:0%; } to { width: var(--w); } }
+    .warnBox{
+      margin-top:10px; padding:10px 12px; border-radius:14px;
+      border:1px dashed rgba(255,204,102,.35);
+      background: rgba(255,204,102,.08); color: var(--text); font-size:12px;
+    }
+
+    .table{ width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.02); }
+    .table th, .table td{ padding:10px 12px; border-bottom:1px solid var(--line); font-size:12px; color:var(--muted); }
+    .table th{ color: var(--text); background: rgba(255,255,255,.03); text-align:left; font-weight:800; }
+    .table tr:last-child td{ border-bottom:none; }
+    .editPencil{
+      display:inline-flex; width:18px;height:18px; border-radius:6px; align-items:center;justify-content:center;
+      border:1px solid rgba(255,255,255,.14); background: rgba(0,0,0,.18); margin-left:8px; color:var(--muted); font-weight:900;
+    }
+
+    /* Multi-agent chat */
+    .chatWrap{ height:100%; display:flex; flex-direction:column; gap:10px; }
+    .chatHeader{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background: rgba(255,255,255,.03);
+    }
+    .chatHeader .left{ display:flex; align-items:center; gap:10px; }
+    .roomDot{
+      width:10px;height:10px;border-radius:50%;
+      background: var(--accent2);
+      box-shadow: 0 0 0 6px rgba(82,224,196,.15);
+    }
+    .chatHeader .title{ margin:0; font-weight:900; font-size:13px; }
+    .chatHeader .hint{ margin:0; color: var(--muted); font-size:12px; }
+
+    .chatLog{
+      flex:1 1 auto;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background: rgba(0,0,0,.12);
+      overflow:auto;
+      padding:12px;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .msg{ display:flex; gap:10px; align-items:flex-start; }
+    .avatar{
+      width:34px;height:34px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.14);
+      display:flex; align-items:center; justify-content:center;
+      background: rgba(255,255,255,.04);
+      flex:0 0 auto;
+      font-weight:900;
+      color: var(--text);
+    }
+    .bubble{
+      flex:1 1 auto;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.03);
+      padding:10px 12px;
+      position:relative;
+      overflow:hidden;
+    }
+    .bubble .meta{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:6px;
+      font-size:12px;
+    }
+    .bubble .meta .name{
+      font-weight:900;
+      color: var(--text);
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    .role{
+      font-size:11px;
+      color: var(--muted);
+      border:1px solid var(--line);
+      background: rgba(0,0,0,.12);
+      padding:4px 8px;
+      border-radius:999px;
+      white-space:nowrap;
+    }
+    .bubble .meta .ts{
+      color: rgba(233,238,255,.60);
+      font-variant-numeric: tabular-nums;
+      font-size:11px;
+      white-space:nowrap;
+    }
+    .bubble .text{ font-size:13px; line-height:1.45; color: var(--text); }
+    .bubble .sub{ font-size:12px; color: var(--muted); margin-top:6px; line-height:1.45; }
+
+    .kv{
+      margin-top:8px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      padding:8px 10px;
+      display:grid;
+      grid-template-columns: 150px 1fr;
+      gap:6px 10px;
+      font-size:12px;
+      color: rgba(233,238,255,.78);
+    }
+    .kv .k{ color: rgba(233,238,255,.55); }
+    .kv .v{ color: rgba(233,238,255,.88); font-variant-numeric: tabular-nums; }
+
+    .pillOk{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 8px;
+      border-radius:999px;
+      font-size:11px;
+      border:1px solid rgba(82,224,196,.30);
+      background: rgba(82,224,196,.10);
+      color: rgba(233,238,255,.90);
+      white-space:nowrap;
+    }
+    .pillNo{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 8px;
+      border-radius:999px;
+      font-size:11px;
+      border:1px solid rgba(255,107,107,.30);
+      background: rgba(255,107,107,.10);
+      color: rgba(233,238,255,.90);
+      white-space:nowrap;
+    }
+
+    /* Persona vote summary panel */
+    .votePanel{
+      border:1px solid var(--line);
+      border-radius:16px;
+      background: rgba(0,0,0,.10);
+      padding:12px;
+      margin-bottom:10px;
+    }
+    .voteHeader{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+    .voteHeader .t{
+      margin:0;
+      font-weight:900;
+      font-size:13px;
+    }
+    .voteHeader .small{
+      margin:0;
+      color: var(--muted);
+      font-size:12px;
+    }
+    .voteRow{
+      display:grid;
+      grid-template-columns: 110px 1fr 88px;
+      gap:10px;
+      align-items:center;
+      padding:8px 0;
+      border-top:1px solid rgba(255,255,255,.06);
+    }
+    .voteRow:first-of-type{ border-top:none; }
+    .voteName{
+      font-weight:800;
+      font-size:12px;
+      color: rgba(233,238,255,.90);
+    }
+    .voteBar{
+      height:10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.07);
+      border:1px solid rgba(255,255,255,.10);
+      overflow:hidden;
+      position:relative;
+    }
+    .voteBar > span{
+      position:absolute; left:0; top:0; bottom:0;
+      width:0%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent));
+      border-radius:999px;
+      transition: width .18s ease;
+    }
+    .voteBadge{
+      display:flex;
+      flex-direction:column;
+      align-items:flex-end;
+      gap:6px;
+      font-size:11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Action Log JSON panel */
+    pre.json{
+      margin:0;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(0,0,0,.18);
+      color: rgba(233,238,255,.82);
+      font-size:11px;
+      line-height:1.45;
+      overflow:auto;
+      max-height: 220px;
+    }
+
+    /* message entrance */
+    @keyframes popIn { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+    .msg.new{ animation: popIn .28s ease-out both; }
+
+    .typing{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      padding:10px 12px;
+      border:1px dashed rgba(255,255,255,.14);
+      background: rgba(255,255,255,.02);
+      border-radius:14px;
+      color: var(--muted);
+      font-size:12px;
+    }
+    .dots{ display:inline-flex; gap:4px; align-items:center; }
+    .dots span{
+      width:6px; height:6px; border-radius:50%;
+      background: rgba(233,238,255,.35);
+      display:inline-block;
+      animation: blink 1s ease-in-out infinite;
+    }
+    .dots span:nth-child(2){ animation-delay: .15s; }
+    .dots span:nth-child(3){ animation-delay: .30s; }
+    @keyframes blink{
+      0%, 80%, 100%{ opacity:.25; transform: translateY(0); }
+      40%{ opacity:1; transform: translateY(-2px); }
+    }
+
+    .footerHint{
+      margin-top:10px;
+      color:rgba(233,238,255,.55);
+      font-size:11px;
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .footerHint code{
+      color:rgba(233,238,255,.72);
+      background: rgba(0,0,0,.20);
+      border:1px solid var(--line);
+      padding:2px 6px;
+      border-radius:8px;
+    }
+
+    @media (max-width: 1020px){
+      .layout{ flex-direction:column; }
+      aside{ width:100%; }
+      main{ min-height:680px; }
+      input[type="range"]{ width:180px; }
+      .grid2{ grid-template-columns: 1fr; height:auto; }
+      .scene{ overflow:auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="title">
+        <h1>RateRocket SimLab — Multi‑Agent + Persona Vote Demo</h1>
+        <p>
+          시간 진행에 따라 <b>에이전트들이 서로 대화</b>하며(신호 요약 → 시나리오 생성 → 페르소나 “Book/No” 투표 → 가드레일 → 오버라이드 합의 → Action Log)
+          결정을 돕는 형태로 시각화했습니다.
+          페르소나의 “나 여기 올래/안올래?”는 단정이 아니라 <b>확률 + WTP(수용 가능한 가격)</b>로 표현됩니다.
+        </p>
+      </div>
+      <div class="badge"><span class="dot"></span> Multi‑Agent Visualization</div>
+    </header>
+
+    <div class="controls">
+      <div class="group">
+        <button id="btnPlay">Play</button>
+        <button id="btnReset">Reset</button>
+      </div>
+
+      <div class="group">
+        <span class="label">속도(압축)</span>
+        <input id="speed" type="range" min="1" max="12" value="6" step="1" />
+        <span class="badge" id="speedLabel">6x (약 30초)</span>
+      </div>
+
+      <div class="group">
+        <span class="label">Seek</span>
+        <input id="seek" type="range" min="0" max="180" value="0" step="0.1" />
+      </div>
+
+      <div class="group">
+        <div class="toggle">
+          <input id="toggleAgents" type="checkbox" checked />
+          <label for="toggleAgents">멀티 에이전트 표시</label>
+        </div>
+      </div>
+
+      <div class="time" id="timeLabel">00:00 / 03:00</div>
+    </div>
+
+    <div class="layout">
+      <aside>
+        <div class="timelineHeader">
+          <p class="h">3분 데모 타임라인</p>
+          <p class="sub">좌측 단계를 클릭하면 해당 구간으로 이동합니다.</p>
+        </div>
+        <ul class="timeline" id="timeline"></ul>
+      </aside>
+
+      <main>
+        <div class="stageHeader">
+          <div class="left">
+            <p class="kicker">현재 단계</p>
+            <p class="big" id="stageTitle">—</p>
+          </div>
+          <div class="right">
+            <div class="tag"><span class="miniDot"></span><span id="rangeTitle">—</span></div>
+            <div class="tag agent" id="agentTag"><span class="miniDot"></span>Agent Room</div>
+          </div>
+        </div>
+
+        <div class="progressWrap">
+          <div class="progressBar"><span id="progress"></span></div>
+        </div>
+
+        <div class="scenes">
+          <!-- Scene 1 -->
+          <section class="scene scene1" data-scene="0">
+            <h3>0:00–0:30 Morning Brief</h3>
+            <p>오늘 바뀐 신호 3개만 요약하고, “어떤 시나리오를 먼저 볼지”를 30초 안에 정합니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Morning Brief (UI)</p>
+                  <span class="pill">signals</span>
+                </div>
+
+                <div class="signals">
+                  <div class="signal">
+                    <div class="icon warn">🎫</div>
+                    <div>
+                      <b>Event Spike</b>
+                      <span>주말 대형 공연/행사 예정</span>
+                    </div>
+                  </div>
+                  <div class="signal">
+                    <div class="icon green">✈️</div>
+                    <div>
+                      <b>Flight Index ↑</b>
+                      <span>주요 출발지 운임 상승</span>
+                    </div>
+                  </div>
+                  <div class="signal">
+                    <div class="icon">🏨</div>
+                    <div>
+                      <b>Comp Price ↑</b>
+                      <span>경쟁가 상단 분위수 이동</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900;">Decision Trigger</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:4px;">“Base/Aggressive 먼저 비교”</div>
+                </div>
+              </div>
+
+              <div class="card" id="agentCard1">
+                <div class="chatWrap">
+                  <div class="chatHeader">
+                    <div class="left">
+                      <span class="roomDot"></span>
+                      <div>
+                        <p class="title">Agent Room</p>
+                        <p class="hint">신호를 요약하고, 다음 행동을 제안합니다</p>
+                      </div>
+                    </div>
+                    <span class="pill">scripted</span>
+                  </div>
+                  <div class="chatLog" id="chatLog"></div>
+                  <div class="typing" id="typing">
+                    <span>next message</span>
+                    <span class="dots"><span></span><span></span><span></span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “오늘 바뀐 3개만”</span>
+              <span>Shortcut: <code>Space</code> Play/Pause</span>
+            </div>
+          </section>
+
+          <!-- Scene 2 -->
+          <section class="scene scene2" data-scene="1">
+            <h3>0:30–1:30 SimLab: 30일 × 3 시나리오 생성</h3>
+            <p>보수/중립/공격 3시나리오(이산 가격 사다리 적용)를 생성하고, 빠르게 비교합니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">SimLab (UI)</p>
+                  <span class="pill">D+1 ~ D+30</span>
+                </div>
+
+                <div class="tabs">
+                  <div class="tab active" id="tabC">Conservative</div>
+                  <div class="tab" id="tabB">Base</div>
+                  <div class="tab" id="tabA">Aggressive</div>
+                </div>
+
+                <div style="color:var(--muted); font-size:12px; line-height:1.5;">
+                  색은 “수요 히트(heat)” 예시입니다. (hot/mid/cool)
+                </div>
+
+                <div class="calendar">
+                  <div class="day cool"></div><div class="day cool"></div><div class="day mid"></div><div class="day mid"></div><div class="day mid"></div><div class="day hot"></div><div class="day hot"></div>
+                  <div class="day cool"></div><div class="day mid"></div><div class="day mid"></div><div class="day mid"></div><div class="day mid"></div><div class="day hot"></div><div class="day hot"></div>
+                  <div class="day cool"></div><div class="day mid"></div><div class="day mid"></div><div class="day mid"></div><div class="day hot"></div><div class="day hot"></div><div class="day hot"></div>
+                  <div class="day cool"></div><div class="day cool"></div><div class="day mid"></div><div class="day mid"></div><div class="day mid"></div><div class="day hot"></div><div class="day hot"></div>
+                </div>
+
+                <div style="margin-top:12px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900;">Output</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:4px;">“가격 캘린더 + 근거 + 경고”</div>
+                </div>
+              </div>
+
+              <div class="card" id="agentCard2">
+                <div class="chatWrap">
+                  <div class="chatHeader">
+                    <div class="left">
+                      <span class="roomDot"></span>
+                      <div>
+                        <p class="title">Agent Room</p>
+                        <p class="hint">시나리오를 만들고, 가드레일을 제시합니다</p>
+                      </div>
+                    </div>
+                    <span class="pill">multi-agent</span>
+                  </div>
+                  <div class="chatLog" id="chatLog2"></div>
+                  <div class="typing" id="typing2">
+                    <span>next message</span>
+                    <span class="dots"><span></span><span></span><span></span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “30일 3탭”이 가장 임팩트</span>
+              <span>Seek: 상단 슬라이더로 단계 이동</span>
+            </div>
+          </section>
+
+          <!-- Scene 3 -->
+          <section class="scene scene3" data-scene="2">
+            <h3>1:30–2:20 날짜 클릭: 페르소나 “Book/No” + 확률 + WTP</h3>
+            <p>일반 고객을 ‘1명’으로 단정하지 않고, <b>대표 세그먼트 페르소나</b>가 “올래/안올래”를 <b>확률 + 수용가격(WTP)</b>로 제시합니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Date Detail (UI)</p>
+                  <span class="pill">D+9 example</span>
+                </div>
+
+                <div class="priceBox">
+                  <div>
+                    <div class="small">Recommended</div>
+                    <div class="bigPrice">₩ 165,000</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="small">combined_score</div>
+                    <div style="font-weight:900; font-size:18px;">72.4</div>
+                  </div>
+                </div>
+
+                <div class="bars">
+                  <div class="barRow">
+                    <div>travel_score</div>
+                    <div class="bar"><span style="--w:30%"></span></div>
+                    <div style="text-align:right;">30%</div>
+                  </div>
+                  <div class="barRow">
+                    <div>occupancy</div>
+                    <div class="bar"><span style="--w:50%"></span></div>
+                    <div style="text-align:right;">50%</div>
+                  </div>
+                  <div class="barRow">
+                    <div>air_norm</div>
+                    <div class="bar"><span style="--w:10%"></span></div>
+                    <div style="text-align:right;">10%</div>
+                  </div>
+                  <div class="barRow">
+                    <div>lux_norm</div>
+                    <div class="bar"><span style="--w:10%"></span></div>
+                    <div style="text-align:right;">10%</div>
+                  </div>
+                </div>
+
+                <div class="warnBox">
+                  경고 예시: 경쟁가 커버리지 78% → “공격적 인상은 보수적으로 해석”
+                </div>
+              </div>
+
+              <div class="card" id="agentCard3">
+                <div class="chatWrap">
+                  <div class="chatHeader">
+                    <div class="left">
+                      <span class="roomDot"></span>
+                      <div>
+                        <p class="title">Agent Room</p>
+                        <p class="hint">페르소나 투표 + 가드레일 + 합의</p>
+                      </div>
+                    </div>
+                    <span class="pill">vote</span>
+                  </div>
+
+                  <!-- Vote Panel -->
+                  <div class="votePanel" id="votePanel">
+                    <div class="voteHeader">
+                      <p class="t">Persona Vote Summary</p>
+                      <p class="small">기준가격: ₩165,000</p>
+                    </div>
+
+                    <div class="voteRow" data-persona="family">
+                      <div class="voteName">Family</div>
+                      <div class="voteBar"><span id="bar_family"></span></div>
+                      <div class="voteBadge" id="badge_family">
+                        <span>—</span><span>WTP —</span>
+                      </div>
+                    </div>
+
+                    <div class="voteRow" data-persona="budget">
+                      <div class="voteName">Budget</div>
+                      <div class="voteBar"><span id="bar_budget"></span></div>
+                      <div class="voteBadge" id="badge_budget">
+                        <span>—</span><span>WTP —</span>
+                      </div>
+                    </div>
+
+                    <div class="voteRow" data-persona="biz">
+                      <div class="voteName">Business</div>
+                      <div class="voteBar"><span id="bar_biz"></span></div>
+                      <div class="voteBadge" id="badge_biz">
+                        <span>—</span><span>WTP —</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="chatLog" id="chatLog3"></div>
+                  <div class="typing" id="typing3">
+                    <span>next message</span>
+                    <span class="dots"><span></span><span></span><span></span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “Book/No를 확률 + WTP로”</span>
+              <span>Note: 숫자 계산은 엔진, 대화는 해석/근거</span>
+            </div>
+          </section>
+
+          <!-- Scene 4 -->
+          <section class="scene scene4" data-scene="3">
+            <h3>2:20–2:50 선택 + 오버라이드</h3>
+            <p>현장 정보(단체/프로모션/오너 지시 등)를 반영해 일부 날짜만 조정합니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Overrides (UI)</p>
+                  <span class="pill">2–3 days</span>
+                </div>
+
+                <table class="table">
+                  <thead>
+                    <tr><th>날짜</th><th>추천가</th><th>오버라이드</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>D+8</td><td>₩ 160,000</td><td>—</td></tr>
+                    <tr><td>D+9</td><td>₩ 165,000</td><td>₩ 170,000 <span class="editPencil">✎</span></td></tr>
+                    <tr><td>D+10</td><td>₩ 165,000</td><td>—</td></tr>
+                    <tr><td>D+11</td><td>₩ 155,000</td><td>₩ 150,000 <span class="editPencil">✎</span></td></tr>
+                  </tbody>
+                </table>
+
+                <div style="margin-top:12px; padding:10px 12px; border-radius:14px; border:1px solid var(--line); background: rgba(255,255,255,.03);">
+                  <div style="font-weight:900;">Selected Scenario</div>
+                  <div style="color:var(--muted); font-size:12px; margin-top:4px;">Base (risk=2) + overrides</div>
+                </div>
+              </div>
+
+              <div class="card" id="agentCard4">
+                <div class="chatWrap">
+                  <div class="chatHeader">
+                    <div class="left">
+                      <span class="roomDot"></span>
+                      <div>
+                        <p class="title">Agent Room</p>
+                        <p class="hint">오버라이드 사유를 합의하고, 로그 준비</p>
+                      </div>
+                    </div>
+                    <span class="pill">governance</span>
+                  </div>
+                  <div class="chatLog" id="chatLog4"></div>
+                  <div class="typing" id="typing4">
+                    <span>next message</span>
+                    <span class="dots"><span></span><span></span><span></span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “전체 자동 + 일부 수동”</span>
+              <span>Output: Action Log로 남기기</span>
+            </div>
+          </section>
+
+          <!-- Scene 5 -->
+          <section class="scene scene5" data-scene="4">
+            <h3>2:50–3:00 Action Log 저장 + Replay</h3>
+            <p>결정/근거 스냅샷을 저장해 Replay 가능하게 만들고, 다음 주 보고서에 재사용합니다.</p>
+
+            <div class="grid2">
+              <div class="card">
+                <div class="cardTitle">
+                  <p class="t">Action Log (UI)</p>
+                  <span class="pill">saved</span>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                  <div style="border:1px solid var(--line); background: rgba(255,255,255,.03); border-radius:14px; padding:10px 12px;">
+                    <div style="font-weight:900; font-size:12px;">오늘: Base + 2일 오버라이드</div>
+                    <div style="color:var(--muted); font-size:12px; margin-top:4px;">D+1~D+30 / 근거 스냅샷 포함</div>
+                  </div>
+
+                  <div style="border:1px solid rgba(122,162,255,.35); background: rgba(122,162,255,.10); border-radius:14px; padding:10px 12px;">
+                    <div style="font-weight:900; font-size:12px;">▶ Replay Now</div>
+                    <div style="color:rgba(233,238,255,.75); font-size:12px; margin-top:4px;">선택 당시 화면/근거 재현</div>
+                  </div>
+                </div>
+
+                <div style="margin-top:12px; color:var(--muted); font-size:12px; line-height:1.5;">
+                  MVP KPI: 정확도 대신 <b>Time-to-Decision</b> + <b>Action Log 채택률</b>
+                </div>
+              </div>
+
+              <div class="card" id="agentCard5">
+                <div class="chatWrap">
+                  <div class="chatHeader">
+                    <div class="left">
+                      <span class="roomDot"></span>
+                      <div>
+                        <p class="title">Agent Room</p>
+                        <p class="hint">스크라이브가 “구조화 로그”를 저장합니다</p>
+                      </div>
+                    </div>
+                    <span class="pill">audit-ready</span>
+                  </div>
+
+                  <div class="votePanel" style="margin-bottom:10px;">
+                    <div class="voteHeader">
+                      <p class="t">Structured Action Log</p>
+                      <p class="small">Replay 가능한 스냅샷</p>
+                    </div>
+                    <pre class="json" id="logJson">{}</pre>
+                  </div>
+
+                  <div class="chatLog" id="chatLog5"></div>
+                  <div class="typing" id="typing5">
+                    <span>next message</span>
+                    <span class="dots"><span></span><span></span><span></span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="footerHint">
+              <span>Tip: “Replay 가능한 결정”이 B2B 신뢰</span>
+              <span>Done: 3분 데모 완주</span>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    // ----- Timeline definition (seconds)
+    const steps = [
+      { idx: 1, title: "Morning Brief", range: "0:00–0:30", start: 0, end: 30,
+        desc: "오늘 바뀐 신호 3개만 보여주기", scene: 0 },
+      { idx: 2, title: "SimLab (30일 3시나리오)", range: "0:30–1:30", start: 30, end: 90,
+        desc: "D+1~D+30, 보수/중립/공격 3시나리오 생성 → 캘린더 비교", scene: 1 },
+      { idx: 3, title: "날짜 클릭(페르소나 투표)", range: "1:30–2:20", start: 90, end: 140,
+        desc: "Book/No + 확률 + WTP로 해석", scene: 2 },
+      { idx: 4, title: "선택 + 오버라이드", range: "2:20–2:50", start: 140, end: 170,
+        desc: "특정 2–3일만 수동 조정", scene: 3 },
+      { idx: 5, title: "Action Log 저장 + Replay", range: "2:50–3:00", start: 170, end: 180,
+        desc: "구조화 로그 저장 → Replay", scene: 4 }
+    ];
+    const total = 180;
+
+    // ----- Agent definitions
+    const agents = {
+      rm:      { name:"RM", role:"Revenue Manager", avatar:"RM" },
+      scout:   { name:"Signal Scout", role:"Signals", avatar:"S" },
+      event:   { name:"Event Agent", role:"Event", avatar:"🎫" },
+      flight:  { name:"Flight Agent", role:"Air", avatar:"✈" },
+      comp:    { name:"Comp Watch", role:"Competitor", avatar:"🏨" },
+      sim:     { name:"Sim Engine", role:"Scenario", avatar:"Σ" },
+      risk:    { name:"Risk Officer", role:"Governance", avatar:"!" },
+      family:  { name:"Family Persona", role:"Demand", avatar:"F" },
+      budget:  { name:"Budget Persona", role:"Demand", avatar:"B" },
+      biz:     { name:"Business Persona", role:"Demand", avatar:"W" },
+      scribe:  { name:"Scribe", role:"Action Log", avatar:"✎" }
+    };
+
+    // Messages by scene (each has absolute 'at' seconds)
+    // kind: signal | scenario | guardrail | question | persona | decision | log
+    const messages = [
+      // Scene 1: Morning Brief
+      { id:"m1", at: 4,  scene:0, a:"scout",  kind:"signal",
+        t:"오늘 변경 신호 스캔 완료. 상위 3개만 요약합니다.", sub:"(이벤트/항공/경쟁가 중심)",
+        data:{ "Output":"Top 3 signals", "Next":"Generate 30-day scenarios" } },
+      { id:"m2", at: 7,  scene:0, a:"event",  kind:"signal",
+        t:"주말 대형 공연/행사 감지 → 수요 상향 가능.", sub:"concert_score ↑",
+        data:{ "Impact":"Demand up", "Where":"D+8 ~ D+11" } },
+      { id:"m3", at: 11, scene:0, a:"flight", kind:"signal",
+        t:"항공 지수 +0.12(7일 대비). 유입 가능성↑", sub:"air_norm ↑",
+        data:{ "ΔAir index":"+0.12", "Confidence":"Medium" } },
+      { id:"m4", at: 16, scene:0, a:"comp",   kind:"signal",
+        t:"경쟁가 상단 분위수 이동. 상대가격 메리트 약화.", sub:"lux_norm ↑",
+        data:{ "Signal":"Competitors up", "Coverage":"78% (warning)" } },
+      { id:"m5", at: 24, scene:0, a:"rm",     kind:"decision",
+        t:"좋습니다. 오늘은 Base/Aggressive 먼저 비교하고, 리스크 경고도 같이 보죠.", sub:"→ SimLab 30일 생성",
+        data:{ "Decision":"Compare Base vs Aggressive", "Reason":"Signals strong + comp up" } },
+
+      // Scene 2: SimLab
+      { id:"m6", at: 33, scene:1, a:"sim",   kind:"scenario",
+        t:"30일 × 3시나리오 생성 시작(이산 가격 사다리 적용).", sub:"risk=1/2/3",
+        data:{ "Horizon":"D+1~D+30", "Scenarios":"Conservative/Base/Aggressive", "Mode":"Discrete price list" } },
+      { id:"m7", at: 44, scene:1, a:"sim",   kind:"scenario",
+        t:"생성 완료. hot/mid/cool 일자를 먼저 확인하세요.", sub:"(데모용 히트맵)",
+        data:{ "Output":"Price calendar + reasons", "Latency":"~seconds (demo)" } },
+      { id:"m8", at: 52, scene:1, a:"risk",  kind:"guardrail",
+        t:"가드레일 제안: 커버리지 85% 미만이면 인상 폭 상한을 둡니다.", sub:"coverage warning",
+        data:{ "Guardrail":"+₩5,000 cap", "Condition":"competitor_coverage >= 85%", "Why":"avoid overreaction when data incomplete" } },
+      { id:"m9", at: 68, scene:1, a:"rm",    kind:"decision",
+        t:"OK. Base로 가되, 고수요 일자만 제한적으로 올립니다.", sub:"(전략)",
+        data:{ "Strategy":"Base + limited overrides", "Respect":"Risk guardrails" } },
+
+      // Scene 3: Date click + persona votes
+      { id:"m10", at: 94, scene:2, a:"rm",    kind:"question",
+        t:"D+9 클릭. 이 날짜를 ₩165,000로 두면 ‘일반 고객’은 올까요?", sub:"(페르소나 투표 요청)",
+        data:{ "Target date":"D+9", "Price":"₩165,000" } },
+      { id:"m11", at: 100, scene:2, a:"sim",  kind:"scenario",
+        t:"D+9 추천가 ₩165,000 / combined_score 72.4", sub:"travel+occ+air+lux",
+        data:{ "Score":"72.4", "Main drivers":"occupancy + travel_score", "Data quality":"competitor_coverage=78% (warn)" } },
+
+      // Persona votes (Book/No + prob + WTP)
+      { id:"m12", at: 106, scene:2, a:"family", kind:"persona",
+        t:"(Family) 이 가격이면 ‘예약할 확률’이 더 높습니다.", sub:"이벤트+날씨 영향",
+        vote:{ persona:"family", verdict:"BOOK", p:0.62, wtp:170000 },
+        data:{ "Verdict":"BOOK", "Book probability":"0.62", "WTP":"₩170,000", "Key reason":"Event-driven leisure" } },
+      { id:"m13", at: 112, scene:2, a:"budget", kind:"persona",
+        t:"(Budget) 이 가격이면 ‘다른 호텔로 갈 확률’이 큽니다.", sub:"가격 민감 세그먼트",
+        vote:{ persona:"budget", verdict:"NO", p:0.58, wtp:145000 },
+        data:{ "Verdict":"NO", "Leave probability":"0.58", "WTP":"₩145,000", "Key reason":"price-sensitive vs competitors" } },
+      { id:"m14", at: 118, scene:2, a:"biz", kind:"persona",
+        t:"(Business) 일정 고정 수요는 수용 가능. 평일이면 더 강합니다.", sub:"요일/출장 영향",
+        vote:{ persona:"biz", verdict:"BOOK", p:0.71, wtp:180000 },
+        data:{ "Verdict":"BOOK", "Book probability":"0.71", "WTP":"₩180,000", "Key reason":"weekday business travel" } },
+
+      { id:"m15", at: 130, scene:2, a:"risk", kind:"guardrail",
+        t:"결론(가드레일): D+9은 +₩5,000까진 OK. 그 이상은 커버리지 개선 전까지 보류.", sub:"안전 장치",
+        data:{ "Guardrail":"+₩5,000 cap", "Applies to":"D+9", "Reason":"competitor_coverage=78% < 85%" } },
+
+      // Scene 4: Override decision
+      { id:"m16", at: 144, scene:3, a:"rm",     kind:"decision",
+        t:"결정: Base(risk=2) 채택. D+9은 +5k, D+11은 -5k로 오버라이드.", sub:"현장 정보 반영",
+        data:{ "Scenario":"Base (risk=2)", "Overrides":["D+9 +₩5,000","D+11 -₩5,000"], "Why":"event bump + demand risk day" } },
+      { id:"m17", at: 154, scene:3, a:"risk",   kind:"guardrail",
+        t:"오버라이드 사유를 로그에 남겨야 합니다(감사/리플레이 목적).", sub:"governance",
+        data:{ "Required fields":"override_reason, data_quality, approver", "Policy":"audit-ready decisions" } },
+      { id:"m18", at: 162, scene:3, a:"scribe", kind:"log",
+        t:"Action Log 초안 생성 중… (선택 시나리오 + 오버라이드 + 근거 스냅샷)", sub:"자동 요약",
+        data:{ "Draft":"true", "Will include":"signals, votes, guardrails, overrides" } },
+
+      // Scene 5: Log saved
+      { id:"m19", at: 172, scene:4, a:"scribe", kind:"log",
+        t:"Action Log 저장 완료. Replay로 동일 근거/화면 재현 가능합니다.", sub:"run_id 연결",
+        log:{
+          action_id:"AL-0001",
+          run_time:"~22s (demo)",
+          horizon:"D+1~D+30",
+          selected_scenario:"Base (risk=2)",
+          overrides:[
+            { date:"D+9", delta:"+₩5,000", reason:"Event-driven demand; family persona supports; guardrail cap applied" },
+            { date:"D+11", delta:"-₩5,000", reason:"Data coverage warning + cautious stance" }
+          ],
+          persona_votes:{
+            family:{ verdict:"BOOK", p:0.62, wtp:170000 },
+            budget:{ verdict:"NO",   p:0.58, wtp:145000 },
+            business:{ verdict:"BOOK", p:0.71, wtp:180000 }
+          },
+          guardrails:[
+            { rule:"+₩5,000 cap", condition:"competitor_coverage >= 85% else cap", applied_to:["D+9"] }
+          ],
+          data_quality:{ competitor_coverage:0.78, notes:"below threshold → conservative cap" },
+          kpi:{ primary:["time_to_decision","action_log_adoption"], secondary:["calibration later"] }
+        },
+        data:{ "Saved":"true", "Replay":"enabled", "Audit":"ready" } },
+      { id:"m20", at: 176, scene:4, a:"rm",     kind:"decision",
+        t:"좋아요. 이제 결정 시간(Time-to-Decision)과 로그 채택률이 KPI로 측정됩니다.", sub:"MVP success metric",
+        data:{ "MVP KPI":["Time-to-Decision","Action Log adoption"], "Accuracy":"not primary (yet)" } }
+    ];
+
+    // ----- DOM
+    const timelineEl = document.getElementById("timeline");
+    const stageTitleEl = document.getElementById("stageTitle");
+    const rangeTitleEl = document.getElementById("rangeTitle");
+    const progressEl = document.getElementById("progress");
+    const timeLabelEl = document.getElementById("timeLabel");
+    const btnPlay = document.getElementById("btnPlay");
+    const btnReset = document.getElementById("btnReset");
+    const speedInput = document.getElementById("speed");
+    const speedLabel = document.getElementById("speedLabel");
+    const seek = document.getElementById("seek");
+    const agentTag = document.getElementById("agentTag");
+    const toggleAgents = document.getElementById("toggleAgents");
+
+    const scenes = Array.from(document.querySelectorAll(".scene"));
+    const chatLogs = [
+      document.getElementById("chatLog"),
+      document.getElementById("chatLog2"),
+      document.getElementById("chatLog3"),
+      document.getElementById("chatLog4"),
+      document.getElementById("chatLog5")
+    ];
+    const typers = [
+      document.getElementById("typing"),
+      document.getElementById("typing2"),
+      document.getElementById("typing3"),
+      document.getElementById("typing4"),
+      document.getElementById("typing5")
+    ];
+
+    const voteEls = {
+      family: { bar: document.getElementById("bar_family"), badge: document.getElementById("badge_family") },
+      budget: { bar: document.getElementById("bar_budget"), badge: document.getElementById("badge_budget") },
+      biz:    { bar: document.getElementById("bar_biz"), badge: document.getElementById("badge_biz") }
+    };
+    const logJsonEl = document.getElementById("logJson");
+
+    // Build timeline list
+    const stepNodes = steps.map(s => {
+      const li = document.createElement("li");
+      li.className = "step";
+      li.dataset.start = s.start;
+      li.dataset.end = s.end;
+      li.dataset.scene = s.scene;
+      li.innerHTML = `
+        <div class="idx">${s.idx}</div>
+        <div class="meta">
+          <p class="range">${s.range}</p>
+          <p class="name">${s.title}</p>
+          <p class="desc">${s.desc}</p>
+        </div>
+      `;
+      li.addEventListener("click", () => {
+        setTime(s.start + 0.01);
+        pause();
+        render(true);
+      });
+      timelineEl.appendChild(li);
+      return li;
+    });
+
+    // Playback state
+    let playing = false;
+    let lastNow = null;
+    let t = 0;
+    let speed = Number(speedInput.value);
+
+    function fmt(sec){
+      const s = Math.max(0, Math.min(total, sec));
+      const m = Math.floor(s / 60);
+      const r = Math.floor(s % 60);
+      return `${String(m).padStart(2,"0")}:${String(r).padStart(2,"0")}`;
+    }
+
+    function formatKRW(n){
+      try{
+        return "₩" + n.toLocaleString("ko-KR");
+      }catch(e){
+        return "₩" + String(n);
+      }
+    }
+
+    function updateSpeedLabel(){
+      speed = Number(speedInput.value);
+      const realSeconds = Math.round(total / speed);
+      speedLabel.textContent = `${speed}x (약 ${realSeconds}초)`;
+    }
+    speedInput.addEventListener("input", () => { updateSpeedLabel(); render(false); });
+
+    // Scrubber
+    seek.addEventListener("input", () => {
+      setTime(Number(seek.value));
+      pause();
+      render(true);
+    });
+
+    function setTime(sec){
+      t = Math.max(0, Math.min(total, sec));
+      seek.value = t;
+    }
+
+    function findActiveStep(sec){
+      if (sec >= total) return steps.length - 1;
+      return steps.findIndex(s => sec >= s.start && sec < s.end);
+    }
+
+    function activateScene(sceneIdx){
+      scenes.forEach(el => el.classList.toggle("active", Number(el.dataset.scene) === sceneIdx));
+    }
+
+    function updateSimLabTabs(active){
+      const tabC = document.getElementById("tabC");
+      const tabB = document.getElementById("tabB");
+      const tabA = document.getElementById("tabA");
+      if (!tabC || !tabB || !tabA) return;
+
+      if (!active){
+        tabC.classList.add("active");
+        tabB.classList.remove("active");
+        tabA.classList.remove("active");
+        return;
+      }
+      const phase = (t - 30) / 60; // 0..1 in scene2
+      const k = Math.floor(phase * 3); // 0..2
+      tabC.classList.toggle("active", k === 0);
+      tabB.classList.toggle("active", k === 1);
+      tabA.classList.toggle("active", k >= 2);
+    }
+
+    function buildKV(data){
+      const keys = Object.keys(data || {});
+      if (!keys.length) return "";
+      const rows = keys.map(k => `<div class="k">${escapeHTML(k)}</div><div class="v">${escapeHTML(String(data[k]))}</div>`).join("");
+      return `<div class="kv">${rows}</div>`;
+    }
+
+    function badgeForKind(kind, vote){
+      if (kind !== "persona" || !vote) return "";
+      const ok = vote.verdict === "BOOK";
+      const pct = Math.round((vote.p || 0) * 100);
+      const text = ok ? `BOOK ${pct}%` : `NO ${pct}%`;
+      const cls = ok ? "pillOk" : "pillNo";
+      return `<span class="${cls}">${text}</span>`;
+    }
+
+    function escapeHTML(str){
+      return str.replace(/[&<>"']/g, (m) => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    function buildMsgNode(m, isNew){
+      const a = agents[m.a] || { name:m.a, role:"Agent", avatar:"?" };
+      const wrap = document.createElement("div");
+      wrap.className = "msg" + (isNew ? " new" : "");
+      const badge = badgeForKind(m.kind, m.vote);
+      wrap.innerHTML = `
+        <div class="avatar" aria-hidden="true">${a.avatar}</div>
+        <div class="bubble">
+          <div class="meta">
+            <div class="name">${a.name} <span class="role">${a.role}</span> ${badge}</div>
+            <div class="ts">${fmt(m.at)}</div>
+          </div>
+          <div class="text">${escapeHTML(m.t)}</div>
+          ${m.sub ? `<div class="sub">${escapeHTML(m.sub)}</div>` : ``}
+          ${m.data ? buildKV(m.data) : ``}
+        </div>
+      `;
+      return wrap;
+    }
+
+    function computeVotesUpToTime(){
+      const vs = { family:null, budget:null, biz:null };
+      const upto = messages.filter(m => m.scene === 2 && m.kind === "persona" && m.at <= t && m.vote);
+      for (const m of upto){
+        if (m.vote && vs[m.vote.persona] == null){
+          vs[m.vote.persona] = m.vote;
+        } else if (m.vote && vs[m.vote.persona] != null){
+          // keep the latest vote if multiple
+          vs[m.vote.persona] = m.vote;
+        }
+      }
+      return vs;
+    }
+
+    function renderVotePanel(){
+      const vs = computeVotesUpToTime();
+      for (const key of ["family","budget","biz"]){
+        const el = voteEls[key];
+        if (!el || !el.bar || !el.badge) continue;
+
+        const v = vs[key];
+        if (!v){
+          el.bar.style.width = "0%";
+          el.badge.innerHTML = `<span>—</span><span>WTP —</span>`;
+          continue;
+        }
+        const pct = Math.round((v.p || 0) * 100);
+        el.bar.style.width = pct + "%";
+        const verdict = v.verdict === "BOOK" ? "BOOK" : "NO";
+        const verdictHtml = v.verdict === "BOOK"
+          ? `<span style="color:rgba(82,224,196,.95); font-weight:900;">${verdict} ${pct}%</span>`
+          : `<span style="color:rgba(255,107,107,.95); font-weight:900;">${verdict} ${pct}%</span>`;
+        el.badge.innerHTML = `${verdictHtml}<span>WTP ${escapeHTML(formatKRW(v.wtp || 0))}</span>`;
+      }
+    }
+
+    function renderLogJson(){
+      if (!logJsonEl) return;
+      const saved = messages
+        .filter(m => m.scene === 4 && m.kind === "log" && m.at <= t && m.log)
+        .sort((a,b) => a.at - b.at)
+        .slice(-1)[0];
+
+      if (!saved){
+        logJsonEl.textContent = "{}";
+        return;
+      }
+      try{
+        logJsonEl.textContent = JSON.stringify(saved.log, null, 2);
+      }catch(e){
+        logJsonEl.textContent = "{ /* failed to stringify */ }";
+      }
+    }
+
+    function renderChat(sceneIdx, hardReset=false){
+      if (!toggleAgents.checked){
+        agentTag.style.display = "none";
+        const cards = document.querySelectorAll('[id^="agentCard"]');
+        cards.forEach(c => c.style.display = "none");
+        return;
+      } else {
+        agentTag.style.display = "inline-flex";
+        const cards = document.querySelectorAll('[id^="agentCard"]');
+        cards.forEach(c => c.style.display = "block");
+      }
+
+      // Determine visible messages up to current time within current scene
+      const visible = messages
+        .filter(m => m.scene === sceneIdx && m.at <= t)
+        .sort((a,b) => a.at - b.at);
+
+      const log = chatLogs[sceneIdx];
+      const typer = typers[sceneIdx];
+      if (!log || !typer) return;
+
+      if (hardReset){
+        log.innerHTML = "";
+      }
+
+      // Rebuild if scrubbed backward
+      if (log.children.length > visible.length){
+        log.innerHTML = "";
+      }
+
+      // Append new messages
+      const startIdx = log.children.length;
+      for (let i=startIdx; i<visible.length; i++){
+        log.appendChild(buildMsgNode(visible[i], true));
+      }
+
+      // Typing indicator
+      const nextMsg = messages
+        .filter(m => m.scene === sceneIdx && m.at > t)
+        .sort((a,b) => a.at - b.at)[0];
+      typer.style.display = nextMsg ? "flex" : "none";
+
+      // Auto-scroll when playing and new messages appear
+      if (playing && visible.length > startIdx){
+        log.scrollTop = log.scrollHeight;
+      }
+    }
+
+    function render(hardReset=false){
+      const idx = findActiveStep(t);
+      const step = steps[Math.max(0, idx)];
+
+      // Timeline highlight
+      stepNodes.forEach((node, i) => node.classList.toggle("active", i === idx));
+
+      // Header
+      stageTitleEl.textContent = step ? step.title : "—";
+      rangeTitleEl.textContent = step ? step.range : "—";
+
+      // progress & time
+      progressEl.style.width = `${(t / total) * 100}%`;
+      timeLabelEl.textContent = `${fmt(t)} / ${fmt(total)}`;
+
+      // Scene
+      if (step) activateScene(step.scene);
+      updateSimLabTabs(step && step.scene === 1);
+
+      // Scene-specific structured UI
+      if (step && step.scene === 2){
+        renderVotePanel();
+      }
+      if (step && step.scene === 4){
+        renderLogJson();
+      }
+
+      // Chat rendering
+      if (step) renderChat(step.scene, hardReset);
+    }
+
+    function loop(now){
+      if (!playing) return;
+      if (lastNow == null) lastNow = now;
+      const dt = (now - lastNow) / 1000;
+      lastNow = now;
+
+      setTime(t + dt * speed);
+
+      if (t >= total){
+        setTime(total);
+        pause();
+        render(false);
+        return;
+      }
+
+      render(false);
+      requestAnimationFrame(loop);
+    }
+
+    function play(){
+      if (playing) return;
+      playing = true;
+      btnPlay.textContent = "Pause";
+      lastNow = null;
+      requestAnimationFrame(loop);
+    }
+
+    function pause(){
+      playing = false;
+      btnPlay.textContent = "Play";
+      lastNow = null;
+    }
+
+    btnPlay.addEventListener("click", () => { if (playing) pause(); else play(); });
+    btnReset.addEventListener("click", () => { pause(); setTime(0); render(true); });
+
+    toggleAgents.addEventListener("change", () => { render(true); });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space"){
+        e.preventDefault();
+        if (playing) pause(); else play();
+      }
+    });
+
+    // Init
+    updateSpeedLabel();
+    render(true);
+  </script>
+</body>
+</html>
