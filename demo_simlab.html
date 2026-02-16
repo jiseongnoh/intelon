@@ -1,0 +1,1377 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>RateRocket SimLab Pro — Guided Demo (Patched v4 Review Fix)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#060a16;
+      --text:#e2e8f0;
+      --muted:#94a3b8;
+      --line:rgba(255,255,255,.06);
+      --accent:#6366f1;
+      --accent2:#10b981;
+      --danger:#ef4444;
+      --radius:16px;
+    }
+    body {
+      background: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                  radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.1) 0px, transparent 50%),
+                  var(--bg);
+      color: var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    }
+    .glass { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(12px); border: 1px solid var(--line); }
+    .timeline-active { border-left: 4px solid var(--accent); background: rgba(99, 102, 241, 0.1); }
+    .chip { background: rgba(2,6,23,.7); border: 1px solid rgba(148,163,184,.18); }
+    .kbd { border: 1px solid rgba(148,163,184,.25); background: rgba(2,6,23,.65); padding: 1px 6px; border-radius: 6px; font-size: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    /* Animation */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .animate-in { animation: fadeIn 0.35s ease-out forwards; }
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+    /* Range styling */
+    input[type=range] { -webkit-appearance: none; background: transparent; }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      height: 16px; width: 16px; border-radius: 50%;
+      background: var(--accent); cursor: pointer; margin-top: -6px;
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+    }
+    input[type=range]::-webkit-slider-runnable-track {
+      width: 100%; height: 4px; cursor: pointer; background: #334155; border-radius: 2px;
+    }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+</head>
+
+<body class="p-6 h-screen flex flex-col overflow-hidden">
+  <!-- Header -->
+  <header class="flex justify-between items-start mb-6 shrink-0">
+    <div>
+      <div class="flex items-center gap-2 mb-2">
+        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 uppercase tracking-widest">Enterprise SimLab</span>
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span class="text-[10px] text-slate-500 font-bold uppercase">Live Multi‑Agent Demo</span>
+      </div>
+      <h1 class="text-2xl font-black tracking-tight">RateRocket <span class="text-indigo-500 font-extrabold">SimLab Pro</span></h1>
+      <p class="text-xs text-slate-500 mt-1">Guided demo controls: <span class="kbd">Space</span> Play/Pause · <span class="kbd">←</span>/<span class="kbd">→</span> Stage · Drag Seek</p>
+    </div>
+
+    <div class="flex gap-3 items-center">
+      <!-- Auto-pause -->
+      <div class="bg-slate-900 rounded-xl border border-slate-800 flex items-center px-3 py-2 h-[42px] gap-2">
+        <span class="text-[10px] text-slate-500 font-bold uppercase"><i class="fa-solid fa-hand"></i> Auto‑pause</span>
+        <input id="autoPauseToggle" type="checkbox" class="accent-indigo-500" checked />
+      </div>
+
+      <!-- Speed Control -->
+      <div class="bg-slate-900 rounded-xl border border-slate-800 flex items-center px-3 py-2 h-[42px]">
+        <span class="text-[10px] text-slate-500 font-bold mr-2 uppercase"><i class="fa-solid fa-gauge-high"></i> Speed</span>
+        <select id="speedControl" class="bg-transparent text-xs font-bold text-indigo-400 outline-none cursor-pointer">
+          <option value="1">1x</option>
+          <option value="1.6">1.6x</option>
+          <option value="2.2">2.2x</option>
+          <option value="4">4x</option>
+        </select>
+      </div>
+
+      <button id="btnPrev" class="bg-slate-900 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-xl font-bold transition-all border border-slate-800 active:scale-95 h-[42px] flex items-center gap-2">
+        <i class="fa-solid fa-arrow-left"></i><span class="text-xs">Prev</span>
+      </button>
+      <button id="btnNext" class="bg-slate-900 hover:bg-slate-800 text-slate-200 px-4 py-2 rounded-xl font-bold transition-all border border-slate-800 active:scale-95 h-[42px] flex items-center gap-2">
+        <span class="text-xs">Next</span><i class="fa-solid fa-arrow-right"></i>
+      </button>
+
+      <div id="timeLabel" class="font-mono text-sm bg-slate-900 px-4 py-2 rounded-xl border border-slate-800 h-[42px] flex items-center mono">00:00 / 03:00</div>
+      <button id="btnPlay" class="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-indigo-500/20 active:scale-95 h-[42px] flex items-center min-w-[86px] justify-center">Play</button>
+    </div>
+  </header>
+
+  <!-- Main Layout -->
+  <div class="flex flex-1 gap-6 min-h-0 overflow-hidden">
+    <!-- Left: Timeline -->
+    <aside class="w-80 flex flex-col gap-4 shrink-0">
+      <div class="glass rounded-2xl p-4 flex-col flex-1 overflow-hidden">
+        <h2 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <i class="fa-solid fa-clock-rotate-left"></i> Scenario Timeline
+        </h2>
+        <div id="timeline" class="flex-1 overflow-y-auto space-y-2 pr-2"></div>
+      </div>
+
+      <div class="glass rounded-2xl p-4">
+        <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center gap-2">
+          <i class="fa-solid fa-circle-info"></i> Demo Success Metric
+        </h3>
+        <p class="text-xs text-slate-400 leading-relaxed">
+          MVP 성공 기준은 <span class="text-slate-200 font-bold">예측정확도</span>가 아니라,
+          <span class="text-slate-200 font-bold">의사결정 시간 단축</span>과
+          <span class="text-slate-200 font-bold">액션 로그 기반 운영</span>입니다.
+        </p>
+      </div>
+    </aside>
+
+    <!-- Right: Main Stage -->
+    <main class="flex-1 flex flex-col gap-4 min-w-0">
+      <!-- Global Status Bar -->
+      <div class="glass rounded-2xl p-4 flex justify-between items-center shrink-0">
+        <div class="flex items-center gap-4">
+          <div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Current Stage</p>
+            <p id="stageTitle" class="font-bold text-indigo-400">—</p>
+          </div>
+          <div class="h-8 w-px bg-slate-800"></div>
+          <div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Model Confidence</p>
+            <div class="flex items-center gap-2">
+              <span id="confidenceText" class="font-mono font-bold text-emerald-400 mono">—</span>
+              <div class="w-20 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                <div id="confidenceBar" class="w-[0%] h-full bg-emerald-500"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="h-8 w-px bg-slate-800"></div>
+          <div class="hidden md:block">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Selected Day</p>
+            <p class="text-sm font-black text-slate-200">D+<span id="selectedDayLabel">9</span> <span class="text-slate-500 font-bold text-xs">(SAT)</span></p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+          <div class="text-right">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Active Agents</p>
+            <div class="flex -space-x-2 mt-1 justify-end">
+              <div class="w-6 h-6 rounded-full bg-indigo-600 border-2 border-slate-900 flex items-center justify-center text-[8px] font-bold">RM</div>
+              <div class="w-6 h-6 rounded-full bg-emerald-600 border-2 border-slate-900 flex items-center justify-center text-[8px] font-bold">Σ</div>
+              <div class="w-6 h-6 rounded-full bg-rose-600 border-2 border-slate-900 flex items-center justify-center text-[8px] font-bold">!</div>
+              <div class="w-6 h-6 rounded-full bg-slate-700 border-2 border-slate-900 flex items-center justify-center text-[8px] font-bold">+3</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Area -->
+      <div class="flex-1 relative min-h-0">
+        <div id="sceneContainer" class="absolute inset-0 h-full w-full glass rounded-3xl p-6 overflow-hidden flex flex-col">
+          <div id="sceneHeader" class="mb-6 shrink-0">
+            <h3 class="text-xl font-bold mb-1">...</h3>
+            <p class="text-sm text-slate-400">...</p>
+          </div>
+
+          <div class="flex flex-1 gap-6 min-h-0">
+            <!-- Left Sub-Panel -->
+            <div id="vizPanel" class="flex-[1.2] bg-slate-950/40 rounded-2xl border border-slate-800/50 p-5 overflow-y-auto"></div>
+
+            <!-- Right Sub-Panel -->
+            <div id="agentPanel" class="flex-1 flex flex-col gap-4 min-h-0">
+              <div class="flex justify-between items-center px-1">
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-widest">Agent Discussion</h4>
+                <span class="px-2 py-0.5 rounded-full text-[9px] bg-slate-800 text-slate-400 border border-slate-700 font-bold uppercase">Real‑time</span>
+              </div>
+              <div id="chatLog" class="flex-1 overflow-y-auto space-y-4 pr-2"></div>
+              <div id="typingIndicator" class="hidden items-center gap-2 px-4 py-2 bg-slate-900/50 rounded-xl border border-slate-800 animate-pulse">
+                <span class="text-[10px] text-slate-500 font-bold uppercase">Agent Thinking</span>
+                <div class="flex gap-1">
+                  <span class="w-1 h-1 bg-slate-500 rounded-full"></span>
+                  <span class="w-1 h-1 bg-slate-500 rounded-full"></span>
+                  <span class="w-1 h-1 bg-slate-500 rounded-full"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Seek -->
+  <div class="mt-4 px-2 mb-2 shrink-0">
+    <div class="flex justify-between text-[10px] text-slate-500 font-bold mb-1 px-1">
+      <span>START</span><span>SEEK</span><span>END</span>
+    </div>
+    <input id="seek" type="range" min="0" max="180" step="0.1" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-indigo-500">
+  </div>
+
+<script>
+(function() {
+  // =========================
+  // Scenario (single source of truth)
+  // =========================
+  const scenario = {
+    totalTime: 180,
+    priceBand: { min: 130000, max: 180000 },
+    baselineSetPrice: 150000,
+    // Inputs reflect your current pipeline concepts: travel_score, occupancy, air_norm, lux_norm
+    inputs: { travel_score: 72, occupancy: 64, air_norm: 0.58, lux_norm: 0.63 },
+    weights: { travel: 0.30, occupancy: 0.50, air: 0.10, lux: 0.10 },
+    steps: [
+      { id: 0, title: "Morning Brief", range: "0:00–0:30", start: 0, end: 30, desc: "오늘 바뀐 신호(이벤트/항공/경쟁가/날씨) 3개 요약", icon: "fa-sun", confidence: 0.90 },
+      { id: 1, title: "SimLab Engine", range: "0:30–1:30", start: 30, end: 90, desc: "D+1~D+30, 보수/중립/공격 3시나리오 생성 → 캘린더 비교", icon: "fa-microchip", confidence: 0.88 },
+      { id: 2, title: "Persona Voting", range: "1:30–2:20", start: 90, end: 140, desc: "날짜 클릭: 추천가 + 기여도 + 경고 + '올래/안올래' 투표", icon: "fa-users-viewfinder", confidence: 0.86 },
+      { id: 3, title: "Override & Decision", range: "2:20–2:50", start: 140, end: 170, desc: "선택 + 오버라이드: 특정 2–3일 수동 조정(실무 반영)", icon: "fa-pen-to-square", confidence: 0.89 },
+      { id: 4, title: "Final Audit Log", range: "2:50–3:00", start: 170, end: 180, desc: "Action Log 저장: 근거 스냅샷 저장 → Replay 가능", icon: "fa-database", confidence: 0.92 }
+    ],
+    messages: [
+      { at: 2, scene: 0, a: "Scout", t: "주말 대형 이벤트 감지: '코리아 페스타'. 숙박 수요 22% 상승 예측.", type: "signal" },
+      { at: 9, scene: 0, a: "Comp", t: "경쟁사 커버리지 78%. 주말 가격 상단 이동 확인.", type: "signal" },
+      { at: 16, scene: 0, a: "RM", t: "좋습니다. D+1~30 구간 3시나리오 생성해서 비교해봅시다.", type: "action" },
+
+      { at: 35, scene: 1, a: "Sim", t: "30일 시나리오 연산 완료. 리스크 레벨별 3개 옵션 도출.", type: "system" },
+      { at: 54, scene: 1, a: "Risk", t: "가드레일: D+8~11 인상폭이 큼. 페르소나 검증이 필요.", type: "warn" },
+
+      { at: 95, scene: 2, a: "Sim", t: "D+9(토) 추천가에 대해 페르소나 투표 시작.", type: "system" },
+      { at: 106, scene: 2, a: "Family", t: "이벤트 목적이면 ₩170k까지는 수용 가능 (Book↑).", type: "persona" },
+      { at: 116, scene: 2, a: "Budget", t: "가격 민감. 경쟁가 대비 불리하면 이탈 (NO↑).", type: "persona" },
+      { at: 126, scene: 2, a: "Biz", t: "주말 레저가 섞이면 민감도 증가. 단, 리뷰/시설이 강점이면 완충.", type: "persona" },
+
+      { at: 145, scene: 3, a: "RM", t: "현장 프로모션 고려. D+9은 소폭 상향. D+11은 홀드.", type: "action" },
+      { at: 175, scene: 4, a: "Scribe", t: "의사결정 근거/스냅샷이 AL-2026-001로 저장되었습니다.", type: "log" }
+    ],
+    personas: [
+      { key: "family", name: "Family", color: "emerald", baseWTP: 172000, sensitivity: 0.020 },
+      { key: "budget", name: "Budget", color: "rose", baseWTP: 155000, sensitivity: 0.035 },
+      { key: "biz", name: "Biz", color: "emerald", baseWTP: 168000, sensitivity: 0.022 }
+    ],
+    // Demo decisions
+    decisions: [
+      { day: 9, reason: "promotion_boost", note: "Local promotion + event demand", final: 168000 },
+      { day: 11, reason: "policy_hold", note: "Keep stable due to coverage risk", final: 155000 }
+    ]
+  };
+
+  // =========================
+  // State (do NOT rely on DOM for truth)
+  // =========================
+  const state = {
+    t: 0,
+    playing: false,
+    lastUpdate: null,
+    speed: 1,
+    autoPause: true,
+    scenarioKey: "base", // conservative/base/aggressive
+    selectedDay: 9,
+    airMode: "affordability", // affordability/raw
+    inputs: JSON.parse(JSON.stringify(scenario.inputs)),
+    weights: JSON.parse(JSON.stringify(scenario.weights)),
+    // derived
+    baselineSetPrice: scenario.baselineSetPrice,
+    // v2: calendar highlight controls
+    deltaThreshold: 10000, // ₩ threshold for highlighting changed days
+    showChangedOnly: false,
+    // v4: snapshot immutability + calendar final price after apply
+    overridesApplied: false,
+    actionLogCreatedAt: null,
+    // animation frame handles
+    animFrames: {},
+    // render cache
+    cache: {
+      sceneId: null,
+      lastRecPrice: null,
+      lastCombined: null,
+      lastPersona: {}
+    }
+  };
+
+  // =========================
+  // DOM
+  // =========================
+  const btnPlay = document.getElementById("btnPlay");
+  const btnPrev = document.getElementById("btnPrev");
+  const btnNext = document.getElementById("btnNext");
+  const seek = document.getElementById("seek");
+  const timeLabel = document.getElementById("timeLabel");
+  const timeline = document.getElementById("timeline");
+  const stageTitle = document.getElementById("stageTitle");
+  const sceneHeader = document.getElementById("sceneHeader");
+  const vizPanel = document.getElementById("vizPanel");
+  const chatLog = document.getElementById("chatLog");
+  const typingIndicator = document.getElementById("typingIndicator");
+  const speedControl = document.getElementById("speedControl");
+  const autoPauseToggle = document.getElementById("autoPauseToggle");
+  const confidenceText = document.getElementById("confidenceText");
+  const confidenceBar = document.getElementById("confidenceBar");
+  const selectedDayLabel = document.getElementById("selectedDayLabel");
+
+  // =========================
+  // Helpers
+  // =========================
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const fmt = (v) => {
+    const n = Math.round(v);
+    return n.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+  const fmtWon = (v) => "₩" + fmt(v);
+  const fmtPct = (x) => (x * 100).toFixed(1) + "%";
+  const formatTime = (sec) => {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return String(m).padStart(2, "0") + ":" + String(s).padStart(2, "0");
+  };
+
+  function normalizeWeights(w) {
+    const keys = ["travel","occupancy","air","lux"];
+    let sum = 0;
+    keys.forEach(k => sum += Math.max(0, Number(w[k] || 0)));
+    if (sum <= 0) return { travel:0.3, occupancy:0.5, air:0.1, lux:0.1 };
+    const out = {};
+    keys.forEach(k => out[k] = Math.max(0, Number(w[k] || 0)) / sum);
+    return out;
+  }
+
+  function computeCombined(inputs, weights, airMode) {
+    const w = normalizeWeights(weights);
+    const travel = clamp(Number(inputs.travel_score)/100, 0, 1);
+    const occ = clamp(Number(inputs.occupancy)/100, 0, 1);
+    const airRaw = clamp(Number(inputs.air_norm), 0, 1);
+    const air = (airMode === "affordability") ? (1 - airRaw) : airRaw;
+    const lux = clamp(Number(inputs.lux_norm), 0, 1);
+    const combined = (w.travel * travel) + (w.occupancy * occ) + (w.air * air) + (w.lux * lux);
+    return { combined, parts: { travel: w.travel*travel, occupancy: w.occupancy*occ, air: w.air*air, lux: w.lux*lux }, weights: w };
+  }
+
+  function combinedToPrice(combined, band) {
+    return band.min + combined * (band.max - band.min);
+  }
+
+  function scenarioMultiplier(key) {
+    if (key === "conservative") return 0.96;
+    if (key === "aggressive") return 1.06;
+    return 1.00;
+  }
+
+  // v4: deterministic day variation (kept consistent across scenes)
+  function dayWobble(day) {
+    // small, deterministic oscillation to avoid a "flat" calendar in demo
+    return 1 + (Math.sin(day * 1.7) * 0.012);
+  }
+
+  // Simple persona decision model for demo: logistic around WTP with sensitivity
+  function personaBookProb(persona, price, context) {
+    // Context effects (very lightweight, purely for demo)
+    const eventBoost = (context.eventSpike ? 6000 : 0);
+    const compPenalty = (context.compCoverage < 0.85 ? -4000 : 0);
+    const wtp = persona.baseWTP + eventBoost + compPenalty;
+    const x = (wtp - price) * persona.sensitivity; // higher -> more likely to book
+    const prob = 1 / (1 + Math.exp(-x));
+    return clamp(prob, 0, 1);
+  }
+
+  function cancelAnim(key) {
+    const id = state.animFrames[key];
+    if (id) cancelAnimationFrame(id);
+    state.animFrames[key] = null;
+  }
+
+  function animateNumber(el, from, to, durMs, key, formatter) {
+    if (!el) return;
+    cancelAnim(key);
+    const start = performance.now();
+    const f = (ts) => {
+      if (!document.body.contains(el)) { cancelAnim(key); return; }
+      const p = clamp((ts - start) / durMs, 0, 1);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      const v = from + (to - from) * eased;
+      el.textContent = formatter ? formatter(v) : String(Math.round(v));
+      if (p < 1) state.animFrames[key] = requestAnimationFrame(f);
+      else state.animFrames[key] = null;
+    };
+    state.animFrames[key] = requestAnimationFrame(f);
+  }
+
+  // =========================
+  // Rendering
+  // =========================
+  function renderTimeline() {
+    timeline.innerHTML = scenario.steps.map(s => `
+      <div id="step-${s.id}" class="p-3 rounded-xl border border-transparent transition-all cursor-pointer hover:bg-slate-800/40" data-start="${s.start}">
+        <div class="flex items-center gap-3 mb-1">
+          <div class="w-6 h-6 rounded bg-slate-800 flex items-center justify-center text-[10px]"><i class="fa-solid ${s.icon}"></i></div>
+          <span class="text-[10px] font-bold text-slate-500 font-mono mono">${s.range}</span>
+        </div>
+        <p class="text-xs font-bold">${s.title}</p>
+      </div>
+    `).join("");
+
+    scenario.steps.forEach(s => {
+      document.getElementById(`step-${s.id}`).addEventListener("click", () => jumpTo(s.start, true));
+    });
+  }
+
+  function getStepByTime(sec) {
+    const idx = scenario.steps.findIndex(s => sec >= s.start && sec < s.end);
+    return scenario.steps[idx === -1 ? scenario.steps.length - 1 : idx];
+  }
+
+  function updateHeader(step) {
+    stageTitle.textContent = step.title;
+    timeLabel.textContent = `${formatTime(state.t)} / 03:00`;
+    const conf = step.confidence || 0.88;
+    confidenceText.textContent = fmtPct(conf);
+    confidenceBar.style.width = Math.round(conf*100) + "%";
+    selectedDayLabel.textContent = state.selectedDay;
+  }
+
+  function highlightTimeline(stepId) {
+    scenario.steps.forEach(s => {
+      const el = document.getElementById(`step-${s.id}`);
+      if (!el) return;
+      el.className = (s.id === stepId)
+        ? "p-3 rounded-xl border border-indigo-500/30 transition-all timeline-active"
+        : "p-3 rounded-xl border border-transparent transition-all cursor-pointer hover:bg-slate-800/40";
+    });
+  }
+
+  function badgeForType(type){
+    if (type === "signal") return `<span class="chip text-[9px] px-2 py-0.5 rounded-full text-amber-300">SIGNAL</span>`;
+    if (type === "warn") return `<span class="chip text-[9px] px-2 py-0.5 rounded-full text-rose-300">RISK</span>`;
+    if (type === "action") return `<span class="chip text-[9px] px-2 py-0.5 rounded-full text-indigo-300">ACTION</span>`;
+    if (type === "log") return `<span class="chip text-[9px] px-2 py-0.5 rounded-full text-emerald-300">LOG</span>`;
+    return `<span class="chip text-[9px] px-2 py-0.5 rounded-full text-slate-300">SYS</span>`;
+  }
+
+  function renderMsg(m, isNew=false) {
+    const animClass = isNew ? "animate-in" : "";
+    return `
+      <div class="${animClass} flex gap-3 items-start">
+        <div class="w-8 h-8 rounded-lg glass flex items-center justify-center text-[10px] font-bold shrink-0 border border-indigo-500/20 text-indigo-400">${m.a[0]}</div>
+        <div class="flex-1">
+          <div class="flex justify-between items-center mb-1">
+            <div class="flex items-center gap-2">
+              <span class="text-[11px] font-black text-slate-200">${m.a}</span>
+              ${badgeForType(m.type)}
+            </div>
+            <span class="text-[9px] font-mono text-slate-500 mono">${formatTime(m.at)}</span>
+          </div>
+          <p class="text-[13px] text-slate-400 leading-relaxed">${m.t}</p>
+        </div>
+      </div>`;
+  }
+
+  function renderChat(sceneId, hardReset) {
+    const current = scenario.messages.filter(m => m.scene === sceneId && m.at <= state.t);
+    const sceneChanged = (chatLog.dataset.sceneId !== String(sceneId));
+
+    if (hardReset || sceneChanged || chatLog.children.length > current.length) {
+      // Full render without animation (prevents "whole chat blinking")
+      chatLog.dataset.sceneId = String(sceneId);
+      chatLog.innerHTML = current.map(m => renderMsg(m, false)).join("");
+      chatLog.scrollTop = chatLog.scrollHeight;
+      return;
+    }
+
+    if (chatLog.children.length < current.length) {
+      const startIdx = chatLog.children.length;
+      const newMsgs = current.slice(startIdx);
+      const html = newMsgs.map(m => renderMsg(m, true)).join("");
+
+      // Smart scroll
+      const isAtBottom = (chatLog.scrollHeight - chatLog.scrollTop) <= (chatLog.clientHeight + 60);
+      chatLog.insertAdjacentHTML("beforeend", html);
+      if (isAtBottom) chatLog.scrollTop = chatLog.scrollHeight;
+    }
+  }
+
+  function renderTyping(sceneId) {
+    const nextMsg = scenario.messages.find(m => m.scene === sceneId && m.at > state.t);
+    typingIndicator.style.display = nextMsg ? "flex" : "none";
+  }
+
+  function getVizHtml(sceneId) {
+    if (sceneId === 0) {
+      return `
+      <div class="space-y-4">
+        <div class="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+          <p class="text-xs font-bold text-amber-400 mb-2 uppercase tracking-tighter">Signal 1 · Event Spike</p>
+          <p class="text-sm font-bold text-white">코리아 페스타 (D+8 ~ D+11)</p>
+          <p class="text-xs text-slate-400 mt-1">예상 유입 +4,500명 / 수요 +22%</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="p-3 bg-slate-900 border border-slate-800 rounded-lg">
+            <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Signal 2 · Air</p>
+            <div class="flex items-end justify-between">
+              <div>
+                <p class="text-xl font-black text-emerald-400" id="airIndexLabel">—</p>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Air_norm</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Mode</p>
+                <p class="text-xs font-bold text-indigo-300" id="airModeLabel">Affordability</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-3 bg-slate-900 border border-slate-800 rounded-lg">
+            <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Signal 3 · Competitor</p>
+            <div class="flex items-end justify-between">
+              <div>
+                <p class="text-xl font-black text-rose-400" id="compGapLabel">—</p>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Coverage</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Warning</p>
+                <p class="text-xs font-bold text-rose-300">78% only</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
+          <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">What happens next</p>
+          <ol class="text-xs text-slate-400 leading-relaxed list-decimal ml-4 space-y-1">
+            <li>SimLab이 D+1~30 추천가를 3 시나리오로 생성</li>
+            <li>리스크 구간(D+9~11)을 페르소나 투표로 검증</li>
+            <li>필요하면 2~3일만 오버라이드하고 근거를 로그로 저장</li>
+          </ol>
+        </div>
+      </div>`;
+    }
+
+    if (sceneId === 1) {
+      // Calendar container + scenario selector
+      return `
+      <div class="h-full flex flex-col gap-4">
+        <div class="flex items-start justify-between gap-3">
+          <div class="flex gap-2">
+            <button data-scen="conservative" class="scenBtn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-700 bg-slate-900 text-slate-300">Conservative</button>
+            <button data-scen="base" class="scenBtn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-indigo-500/40 bg-indigo-600 text-white">Base</button>
+            <button data-scen="aggressive" class="scenBtn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-700 bg-slate-900 text-slate-300">Aggressive</button>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="text-right">
+              <p class="text-[10px] text-slate-500 font-bold uppercase">Legend</p>
+              <p class="text-xs text-slate-400"><span class="text-slate-200 font-bold">Set</span> → <span class="text-indigo-300 font-bold">Rec</span> (Δ 표시)</p>
+            </div>
+
+            <div class="p-2 rounded-xl bg-slate-900/60 border border-slate-800">
+              <p class="text-[10px] text-slate-500 font-bold uppercase">Highlight Δ ≥ <span id="deltaThLabel">10k</span></p>
+              <input id="deltaTh" type="range" min="0" max="50000" step="1000" value="10000" class="w-40 mt-2">
+            </div>
+
+            <label class="flex items-center gap-2 text-xs bg-slate-900/60 border border-slate-800 px-3 py-2 rounded-xl">
+              <input id="showChangedOnly" type="checkbox" class="accent-indigo-500" />
+              <span class="text-slate-200 font-bold">Changed only</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2" id="calendarGrid"></div>
+
+        <div class="p-4 bg-slate-900/40 border border-slate-800 rounded-xl">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-slate-300">Tip</p>
+            <p class="text-[10px] text-slate-500 font-bold uppercase">Click a date</p>
+          </div>
+          <p class="text-xs text-slate-400 mt-2">
+            D+9~11은 이벤트/항공/경쟁가 신호가 겹치는 <span class="text-slate-200 font-bold">리스크 구간</span>입니다.
+            날짜를 클릭하면 Persona Voting에서 “올래/안올래”가 즉시 반응합니다.
+          </p>
+        </div>
+      </div>`;
+    }
+
+    if (sceneId === 2) {
+      return `
+      <div class="h-full flex flex-col gap-5">
+        <!-- Top: price spotlight -->
+        <div class="p-4 rounded-2xl border border-slate-800 bg-slate-950/40">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-[10px] text-slate-500 font-bold uppercase">Selected</p>
+              <p class="text-sm font-black text-slate-200">D+<span id="selDay2">9</span> (SAT)</p>
+              <p class="text-xs text-slate-500 mt-1">Scenario: <span class="text-indigo-300 font-bold" id="scenarioLabel2">Base</span></p>
+            </div>
+
+            <div class="text-right">
+              <p class="text-[10px] text-slate-500 font-bold uppercase">Price</p>
+              <div class="flex items-end gap-2 justify-end">
+                <span class="text-xs text-slate-500 line-through" id="setPrice2">₩150,000</span>
+                <span class="text-2xl font-black text-indigo-300" id="recPrice2">₩—</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Δ <span class="font-bold" id="delta2">—</span></p>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-3">
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div class="flex items-center justify-between">
+                <p class="text-[10px] text-slate-500 font-bold uppercase">What‑if Price</p>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Live</p>
+              </div>
+              <input id="whatifPrice" type="range" min="120000" max="200000" step="1000" value="165000" class="w-full mt-2">
+              <div class="flex items-center justify-between mt-2">
+                <span class="text-xs text-slate-500">120k</span>
+                <span class="text-sm font-black text-slate-200" id="whatifLabel">₩165,000</span>
+                <span class="text-xs text-slate-500">200k</span>
+              </div>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800">
+              <div class="flex items-center justify-between">
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Data Quality</p>
+                <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-300 border border-rose-500/30 font-bold">Coverage 78%</span>
+              </div>
+              <ul class="text-xs text-slate-400 mt-2 space-y-1">
+                <li>• 경쟁가 결측 가능 → 인상폭 가드레일 권장</li>
+                <li>• Air 해석 방향(싸다/비싸다) 불확실 → 토글로 확인</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Middle: inputs + weights -->
+        <div class="grid grid-cols-2 gap-4">
+          <div class="p-4 rounded-2xl border border-slate-800 bg-slate-950/40">
+            <div class="flex items-center justify-between">
+              <p class="text-xs font-bold text-slate-300 uppercase tracking-widest">Signals</p>
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] text-slate-500 font-bold uppercase">Air mode</span>
+                <label class="flex items-center gap-2 text-xs">
+                  <input id="airModeToggle" type="checkbox" class="accent-indigo-500" checked />
+                  <span class="text-indigo-300 font-bold">Affordability</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="mt-4 space-y-4">
+              ${renderSlider("travel_score", "Travel score", 0, 100, 1, scenario.inputs.travel_score)}
+              ${renderSlider("occupancy", "Occupancy %", 0, 100, 1, scenario.inputs.occupancy)}
+              ${renderSlider("air_norm", "Air_norm (0~1)", 0, 1, 0.01, scenario.inputs.air_norm)}
+              ${renderSlider("lux_norm", "Lux_norm (0~1)", 0, 1, 0.01, scenario.inputs.lux_norm)}
+            </div>
+
+            <div class="mt-4 p-3 rounded-xl border border-slate-800 bg-slate-900/40">
+              <div class="flex items-center justify-between">
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Combined</p>
+                <p class="text-sm font-black text-emerald-400 mono" id="combinedScore">—</p>
+              </div>
+              <div class="mt-2 space-y-2">
+                ${renderBar("travel","Travel contribution")}
+                ${renderBar("occupancy","Occupancy contribution")}
+                ${renderBar("air","Air contribution")}
+                ${renderBar("lux","Competitor contribution")}
+              </div>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-2xl border border-slate-800 bg-slate-950/40">
+            <div class="flex items-center justify-between">
+              <p class="text-xs font-bold text-slate-300 uppercase tracking-widest">Weights</p>
+              <p class="text-[10px] text-slate-500 font-bold uppercase">Auto‑normalized</p>
+            </div>
+
+            <div class="mt-4 space-y-4">
+              ${renderSlider("w_travel","w_travel", 0, 1, 0.01, scenario.weights.travel)}
+              ${renderSlider("w_occupancy","w_occupancy", 0, 1, 0.01, scenario.weights.occupancy)}
+              ${renderSlider("w_air","w_air", 0, 1, 0.01, scenario.weights.air)}
+              ${renderSlider("w_lux","w_lux", 0, 1, 0.01, scenario.weights.lux)}
+            </div>
+
+            <div class="mt-4 p-3 rounded-xl border border-slate-800 bg-slate-900/40">
+              <p class="text-[10px] text-slate-500 font-bold uppercase mb-2">Normalized weights</p>
+              <div class="grid grid-cols-2 gap-2 text-xs text-slate-300">
+                <div>travel: <span class="mono text-slate-100 font-bold" id="nw_travel">—</span></div>
+                <div>occ: <span class="mono text-slate-100 font-bold" id="nw_occ">—</span></div>
+                <div>air: <span class="mono text-slate-100 font-bold" id="nw_air">—</span></div>
+                <div>lux: <span class="mono text-slate-100 font-bold" id="nw_lux">—</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom: persona voting -->
+        <div class="p-4 rounded-2xl border border-slate-800 bg-slate-950/40">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-bold text-slate-300 uppercase tracking-widest">Persona Vote · “올래/안올래”</p>
+            <p class="text-[10px] text-slate-500 font-bold uppercase">Price‑sensitivity</p>
+          </div>
+
+          <div class="mt-3 grid grid-cols-3 gap-3" id="personaCards"></div>
+
+          <div class="mt-4 text-xs text-slate-400">
+            • 이 투표는 “정답”이 아니라, RM이 빠르게 <span class="text-slate-200 font-bold">리스크 구간을 설명</span>하고 <span class="text-slate-200 font-bold">오버라이드 근거</span>를 남기기 위한 장치입니다.
+          </div>
+        </div>
+      </div>`;
+    }
+
+    if (sceneId === 3) {
+      return `
+      <div class="space-y-4">
+        <div class="p-4 glass rounded-2xl border border-indigo-500/20 bg-indigo-500/5">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-[10px] text-indigo-300 font-bold uppercase tracking-widest mb-1">Decision</p>
+              <p class="text-sm font-black text-slate-200">Override only 2–3 risky days</p>
+              <p class="text-xs text-slate-500 mt-1">Store rationale for Replay (audit-ready)</p>
+            </div>
+            <div class="text-right">
+              <p class="text-[10px] text-slate-500 font-bold uppercase">Action ID</p>
+              <p class="text-sm font-black text-emerald-300 mono">AL‑2026‑001</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="p-4 rounded-2xl border border-slate-800 bg-slate-950/40">
+            <p class="text-xs font-bold text-slate-300 mb-3">D+9 (SAT)</p>
+            <div class="flex items-end justify-between">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Recommended</p>
+                <p class="text-xl font-black text-indigo-300" id="recPriceD9">—</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Manual</p>
+                <p class="text-xl font-black text-emerald-300" id="manualD9">—</p>
+              </div>
+            </div>
+            <input id="manualD9Slider" type="range" min="120000" max="200000" step="1000" value="168000" class="w-full mt-3">
+                        <div class="mt-3 grid grid-cols-2 gap-2">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Reason code</p>
+                <select id="reasonD9" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none">
+                  <option value="promotion_boost">promotion_boost (promo)</option>
+                  <option value="event_spike">event_spike (event)</option>
+                  <option value="competitor_gap">competitor_gap</option>
+                  <option value="air_signal">air_signal</option>
+                  <option value="manual_override">manual_override</option>
+                  <option value="policy_hold">policy_hold</option>
+                  <option value="other">other</option>
+                </select>
+              </div>
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">Note (saved)</p>
+                <textarea id="noteD9" rows="2" placeholder="예: Local promotion + event demand boost" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none resize-none"></textarea>
+              </div>
+            </div>
+            <p class="text-[10px] text-slate-600 mt-2">이 Reason/Note는 Final Audit Log에 그대로 저장됩니다.</p>
+          </div>
+
+          <div class="p-4 rounded-2xl border border-slate-800 bg-slate-950/40">
+            <p class="text-xs font-bold text-slate-300 mb-3">D+11 (MON)</p>
+            <div class="flex items-end justify-between">
+              <div>
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Recommended</p>
+                <p class="text-xl font-black text-indigo-300" id="recPriceD11">—</p>
+              </div>
+              <div class="text-right">
+                <p class="text-[10px] text-slate-500 font-bold uppercase">Manual</p>
+                <p class="text-xl font-black text-emerald-300 mono">₩155,000</p>
+              </div>
+            </div>
+            <div class="mt-3 p-3 rounded-xl border border-slate-800 bg-slate-900/40 text-xs text-slate-400">
+              Coverage risk 때문에 D+11은 <span class="text-slate-200 font-bold">홀드</span>로 두고, D+9만 미세 조정.
+            </div>
+            <div class="mt-3">
+              <p class="text-[10px] text-slate-500 font-bold uppercase mb-1">D+11 Note (saved)</p>
+              <textarea id="noteD11" rows="2" placeholder="예: Keep stable due to coverage risk" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none resize-none"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <button id="applyOverrides" class="w-full py-3 bg-indigo-600 rounded-2xl text-sm font-bold shadow-lg shadow-indigo-500/20 active:scale-95 transition-transform">
+          Apply Overrides & Save Action Log
+        </button>
+        <p class="text-xs text-slate-500 text-center">버튼을 누르면 Final Audit Log에 스냅샷이 반영됩니다.</p>
+      </div>`;
+    }
+
+    if (sceneId === 4) {
+      return `
+      <div class="h-full flex flex-col gap-3 font-mono text-[11px] text-emerald-400/80 p-4 bg-black rounded-2xl border border-slate-800 overflow-y-auto">
+        <div class="text-slate-400">// Action Log (audit + replay)</div>
+        <pre id="finalJson" class="whitespace-pre-wrap leading-relaxed"></pre>
+        <div class="mt-auto p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center text-emerald-400 font-bold uppercase tracking-widest">
+          Snapshot Saved Successfully
+        </div>
+      </div>`;
+    }
+
+    return "";
+  }
+
+  // Helper templates (injected into scene 2)
+  function renderSlider(id, label, min, max, step, value) {
+    const isWeight = id.startsWith("w_");
+    const display = isWeight ? Number(value).toFixed(2) : (max <= 1 ? Number(value).toFixed(2) : Number(value).toFixed(0));
+    return `
+      <div>
+        <div class="flex items-center justify-between mb-1">
+          <p class="text-[10px] text-slate-500 font-bold uppercase">${label}</p>
+          <span class="text-xs font-black text-slate-200 mono" id="${id}_val">${display}</span>
+        </div>
+        <input id="${id}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" class="w-full">
+      </div>`;
+  }
+  function renderBar(key, label) {
+    return `
+      <div>
+        <div class="flex items-center justify-between">
+          <p class="text-[10px] text-slate-500 font-bold uppercase">${label}</p>
+          <span class="text-[10px] text-slate-400 mono" id="part_${key}">—</span>
+        </div>
+        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+          <div class="h-full bg-indigo-500/70" id="bar_${key}" style="width:0%"></div>
+        </div>
+      </div>`;
+  }
+
+  // =========================
+  // Scene wiring + updates
+  // =========================
+  function wireScene(sceneId) {
+    if (sceneId === 1) {
+      // scenario buttons
+      document.querySelectorAll(".scenBtn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.scenarioKey = btn.dataset.scen;
+          renderCalendar();
+          // Keep selected day visible
+          renderScene(1, false);
+        });
+      });
+
+      // v2: highlight controls (do NOT rely on DOM for truth)
+      const th = document.getElementById("deltaTh");
+      const thLabel = document.getElementById("deltaThLabel");
+      if (th) {
+        th.value = state.deltaThreshold;
+        if (thLabel) thLabel.textContent = `${Math.round(state.deltaThreshold/1000)}k`;
+        th.addEventListener("input", (e) => {
+          state.deltaThreshold = parseInt(e.target.value, 10) || 0;
+          if (thLabel) thLabel.textContent = `${Math.round(state.deltaThreshold/1000)}k`;
+          renderCalendar();
+        });
+      }
+
+      const only = document.getElementById("showChangedOnly");
+      if (only) {
+        only.checked = !!state.showChangedOnly;
+        only.addEventListener("change", (e) => {
+          state.showChangedOnly = !!e.target.checked;
+          renderCalendar();
+        });
+      }
+
+      renderCalendar();
+    }
+
+    if (sceneId === 2) {
+      const airToggle = document.getElementById("airModeToggle");
+      if (airToggle) {
+        airToggle.checked = (state.airMode === "affordability");
+        airToggle.addEventListener("change", (e) => {
+          state.airMode = e.target.checked ? "affordability" : "raw";
+          updateScene2(true);
+        });
+      }
+
+      // inputs sliders
+      ["travel_score","occupancy","air_norm","lux_norm"].forEach(k => {
+        const el = document.getElementById(k);
+        if (!el) return;
+        el.value = state.inputs[k];
+        el.addEventListener("input", (e) => {
+          state.inputs[k] = parseFloat(e.target.value);
+          const vEl = document.getElementById(`${k}_val`);
+          if (vEl) vEl.textContent = (k.endsWith("_norm") ? Number(state.inputs[k]).toFixed(2) : Number(state.inputs[k]).toFixed(0));
+          updateScene2(true);
+        });
+      });
+
+      // weight sliders
+      const map = { w_travel:"travel", w_occupancy:"occupancy", w_air:"air", w_lux:"lux" };
+      Object.keys(map).forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.value = state.weights[map[id]];
+        el.addEventListener("input", (e) => {
+          state.weights[map[id]] = parseFloat(e.target.value);
+          const vEl = document.getElementById(`${id}_val`);
+          if (vEl) vEl.textContent = Number(state.weights[map[id]]).toFixed(2);
+          updateScene2(true);
+        });
+      });
+
+      // what-if slider
+      const whatif = document.getElementById("whatifPrice");
+      if (whatif) {
+        const { recPrice } = computeDayPrices(state.selectedDay);
+        whatif.value = Math.round(recPrice/1000)*1000;
+        const label = document.getElementById("whatifLabel");
+        if (label) label.textContent = fmtWon(parseFloat(whatif.value));
+        whatif.addEventListener("input", (e) => {
+          const v = parseFloat(e.target.value);
+          const label = document.getElementById("whatifLabel");
+          if (label) label.textContent = fmtWon(v);
+          updatePersonaCards(v);
+        });
+      }
+
+      // initial update
+      updateScene2(false);
+    }
+
+    if (sceneId === 3) {
+      const d9 = scenario.decisions.find(x => x.day === 9);
+      const d11 = scenario.decisions.find(x => x.day === 11);
+
+      // Price override (D+9)
+      const slider = document.getElementById("manualD9Slider");
+      if (slider && d9) {
+        slider.value = d9.final ?? 168000;
+        slider.addEventListener("input", (e) => {
+          const v = parseFloat(e.target.value);
+          const manual = document.getElementById("manualD9");
+          if (manual) manual.textContent = fmtWon(v);
+          d9.final = v;
+        });
+      }
+
+      // v2: rationale capture (Reason code + Note)
+      const reasonSel = document.getElementById("reasonD9");
+      if (reasonSel && d9) {
+        reasonSel.value = d9.reason || "manual_override";
+        reasonSel.addEventListener("change", (e) => {
+          d9.reason = e.target.value;
+        });
+      }
+
+      const noteD9 = document.getElementById("noteD9");
+      if (noteD9 && d9) {
+        noteD9.value = d9.note || "";
+        noteD9.addEventListener("input", (e) => {
+          d9.note = e.target.value;
+        });
+      }
+
+      const noteD11 = document.getElementById("noteD11");
+      if (noteD11 && d11) {
+        noteD11.value = d11.note || "";
+        noteD11.addEventListener("input", (e) => {
+          d11.note = e.target.value;
+        });
+      }
+
+      const apply = document.getElementById("applyOverrides");
+      if (apply) {
+        apply.addEventListener("click", () => {
+          // v4: "save" moment → freeze snapshot meta (timestamp) + mark overrides applied
+          state.overridesApplied = true;
+          if (!state.actionLogCreatedAt) state.actionLogCreatedAt = new Date().toISOString();
+
+          // For demo: jump to Final Audit Log. In product: persist to DB + create Replay snapshot.
+          jumpStep(+1, true);
+        });
+      }
+
+      updateScene3(false);
+    }
+
+    if (sceneId === 4) {
+      updateScene4();
+    }
+
+    if (sceneId === 0) {
+      updateScene0();
+    }
+  }
+
+  function computeDayPrices(day) {
+    const { combined, parts, weights } = computeCombined(state.inputs, state.weights, state.airMode);
+    const base = combinedToPrice(combined, scenario.priceBand);
+    const mult = scenarioMultiplier(state.scenarioKey);
+
+    // day effect: bump around event window (D+8~11). Keep D+8 also meaningfully high.
+    const bumpByDay = { 8: 1.06, 9: 1.09, 10: 1.08, 11: 1.07 };
+    const eventBump = bumpByDay[day] || 1.00;
+
+    // v4: deterministic day wobble applied at the source (avoid calendar vs detail mismatch)
+    const wobble = dayWobble(day);
+
+    const recPrice = base * mult * eventBump * wobble;
+    const setPrice = state.baselineSetPrice;
+
+    const decision = scenario.decisions.find(x => x.day === day);
+    const finalPrice = (state.overridesApplied && decision && typeof decision.final === "number") ? decision.final : null;
+    const effectivePrice = (finalPrice != null) ? finalPrice : recPrice;
+
+    return { combined, parts, weights, setPrice, recPrice, finalPrice, effectivePrice, hasOverride: finalPrice != null };
+  }
+
+  function updateScene0() {
+    const airIndex = document.getElementById("airIndexLabel");
+    const airMode = document.getElementById("airModeLabel");
+    const compGap = document.getElementById("compGapLabel");
+    if (airIndex) airIndex.textContent = (state.inputs.air_norm * 100).toFixed(1);
+    if (airMode) airMode.textContent = (state.airMode === "affordability") ? "Affordability" : "Raw";
+    if (compGap) compGap.textContent = "-12.5%";
+  }
+
+  function renderCalendar() {
+    const grid = document.getElementById("calendarGrid");
+    if (!grid) return;
+    // Build 30 days, 6 columns
+    const days = Array.from({length: 30}, (_,i)=> i+1);
+    const cells = days.map(d => {
+      const { recPrice, setPrice, effectivePrice, hasOverride } = computeDayPrices(d);
+      const rec = effectivePrice; // calendar shows the price that will be pushed (Rec or Final)
+      const delta = rec - setPrice;
+      const absDelta = Math.abs(delta);
+      const changed = absDelta >= state.deltaThreshold;
+      const risky = (d>=8 && d<=11);
+      const selected = (d === state.selectedDay);
+
+      const deltaK = Math.round(delta/1000);
+      const deltaText = (delta>=0?"+":"") + fmt(deltaK) + "k";
+
+      const baseCls = "rounded-xl border flex flex-col p-2 cursor-pointer transition-all overflow-hidden";
+      const bgBase = risky ? "bg-indigo-500/10 border-indigo-500/30" : "bg-slate-900/40 border-slate-800";
+      const changeBorder = changed
+        ? (delta>=0 ? "border-emerald-500/50 ring-1 ring-emerald-500/30" : "border-rose-500/50 ring-1 ring-rose-500/30")
+        : "";
+      const fadeCls = (!changed && state.showChangedOnly) ? "opacity-25" : (!changed ? "opacity-60" : "");
+      const selCls = selected ? " ring-2 ring-indigo-500/70" : " hover:bg-slate-800/40";
+
+      const deltaPill = changed
+        ? `<span class="text-[9px] px-2 py-0.5 rounded-full whitespace-nowrap leading-none ${delta>=0 ? "bg-emerald-500/10 text-emerald-300 border border-emerald-500/30" : "bg-rose-500/10 text-rose-300 border border-rose-500/30"} font-bold">${deltaText}</span>`
+        : (state.showChangedOnly ? `` : `<span class="text-[9px] text-slate-600 font-bold whitespace-nowrap leading-none">Δ${deltaText}</span>`);
+
+      const showDetail = !(state.showChangedOnly && !changed);
+
+      return `
+        <div class="${baseCls} ${bgBase} ${changeBorder} ${fadeCls} ${selCls}" data-day="${d}">
+          <div class="flex items-start justify-between gap-2">
+            <span class="text-[9px] text-slate-500 font-bold shrink-0">D+${d}</span>
+            <div class="flex flex-col items-end gap-1 min-w-0">
+              ${risky ? `<span class="text-[9px] px-2 py-0.5 rounded-full whitespace-nowrap leading-none bg-rose-500/10 text-rose-300 border border-rose-500/30 font-bold">Risk</span>` : ``}
+              ${hasOverride ? `<span class="text-[9px] px-2 py-0.5 rounded-full whitespace-nowrap leading-none bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 font-bold">Manual</span>` : ``}
+              ${deltaPill}
+            </div>
+          </div>
+
+          ${showDetail ? `
+            <div class="mt-2 text-[10px] text-slate-500">Set <span class="text-slate-300 font-bold">${fmt(Math.round(setPrice/1000))}k</span></div>
+            <div class="text-[10px] text-slate-500">${hasOverride ? "Final" : "Rec"} <span class="${hasOverride ? "text-indigo-200" : "text-indigo-300"} font-bold">${fmt(Math.round(rec/1000))}k</span></div>
+            <div class="mt-auto pt-2 text-[10px] font-bold ${changed ? (delta>=0 ? "text-emerald-300" : "text-rose-300") : "text-slate-500"}">Δ ${deltaText}</div>
+          ` : `
+            <div class="mt-3 text-[10px] text-slate-600">No meaningful change</div>
+          `}
+        </div>`;
+    }).join("");
+
+    grid.innerHTML = cells;
+
+    // Click binding
+    grid.querySelectorAll("[data-day]").forEach(el => {
+      el.addEventListener("click", () => {
+        state.selectedDay = parseInt(el.dataset.day, 10);
+        selectedDayLabel.textContent = state.selectedDay;
+        renderCalendar();
+        // If we're in Persona stage, update it live
+        if (state.cache.sceneId === 2) updateScene2(true);
+      });
+    });
+
+    // Update scenario button highlighting
+    document.querySelectorAll(".scenBtn").forEach(btn => {
+      const key = btn.dataset.scen;
+      if (key === state.scenarioKey) {
+        btn.className = "scenBtn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-indigo-500/40 bg-indigo-600 text-white";
+      } else {
+        btn.className = "scenBtn px-3 py-1.5 rounded-xl text-[10px] font-bold border border-slate-700 bg-slate-900 text-slate-300";
+      }
+    });
+  }
+
+  function updateScene2(animate=true) {
+    const sel = document.getElementById("selDay2");
+    const scenarioLabel2 = document.getElementById("scenarioLabel2");
+    if (sel) sel.textContent = state.selectedDay;
+    if (scenarioLabel2) scenarioLabel2.textContent = state.scenarioKey[0].toUpperCase()+state.scenarioKey.slice(1);
+
+    const { combined, parts, weights, setPrice, recPrice } = computeDayPrices(state.selectedDay);
+
+    // Combined score number
+    const combinedEl = document.getElementById("combinedScore");
+    const combinedScaled = combined * 100;
+    if (combinedEl) {
+      if (animate && state.cache.lastCombined !== null) animateNumber(combinedEl, state.cache.lastCombined, combinedScaled, 350, "combined", v => v.toFixed(1));
+      else combinedEl.textContent = combinedScaled.toFixed(1);
+      state.cache.lastCombined = combinedScaled;
+    }
+
+    // Contribution bars
+    const maxPart = Math.max(parts.travel, parts.occupancy, parts.air, parts.lux, 0.0001);
+    ["travel","occupancy","air","lux"].forEach(k => {
+      const val = parts[k];
+      const pct = clamp(val / maxPart, 0, 1) * 100;
+      const bar = document.getElementById("bar_"+k);
+      const label = document.getElementById("part_"+k);
+      if (bar) bar.style.width = pct.toFixed(1) + "%";
+      if (label) label.textContent = (val*100).toFixed(1) + " pts";
+    });
+
+    // Normalized weights display
+    const nw = normalizeWeights(state.weights);
+    const map = { nw_travel:"travel", nw_occ:"occupancy", nw_air:"air", nw_lux:"lux" };
+    Object.keys(map).forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = nw[map[id]].toFixed(2);
+    });
+
+    // Price spotlight
+    const setEl = document.getElementById("setPrice2");
+    const recEl = document.getElementById("recPrice2");
+    const deltaEl = document.getElementById("delta2");
+    if (setEl) setEl.textContent = fmtWon(setPrice);
+    if (recEl) {
+      const prev = state.cache.lastRecPrice ?? recPrice;
+      if (animate) animateNumber(recEl, prev, recPrice, 420, "recPrice2", v => fmtWon(v));
+      else recEl.textContent = fmtWon(recPrice);
+      state.cache.lastRecPrice = recPrice;
+    }
+    if (deltaEl) {
+      const d = recPrice - setPrice;
+      deltaEl.textContent = (d>=0?"+":"") + fmtWon(Math.abs(d));
+      deltaEl.className = d>=0 ? "font-bold text-emerald-300" : "font-bold text-rose-300";
+    }
+
+    // what-if slider sync to recommended (only if user hasn't moved it yet in this render)
+    const whatif = document.getElementById("whatifPrice");
+    if (whatif && !whatif.dataset.userTouched) {
+      whatif.value = Math.round(recPrice/1000)*1000;
+      const label = document.getElementById("whatifLabel");
+      if (label) label.textContent = fmtWon(parseFloat(whatif.value));
+    }
+    if (whatif) {
+      whatif.addEventListener("pointerdown", () => whatif.dataset.userTouched = "1", { once:true });
+    }
+
+    // persona cards based on what-if (or recommended if none)
+    const activePrice = whatif ? parseFloat(whatif.value) : recPrice;
+    updatePersonaCards(activePrice);
+
+    // reflect air mode in stage 0 panel if user toggled earlier
+    updateScene0();
+  }
+
+  function updatePersonaCards(price) {
+    const container = document.getElementById("personaCards");
+    if (!container) return;
+    const context = { eventSpike: (state.selectedDay>=8 && state.selectedDay<=11), compCoverage: 0.78 };
+
+    container.innerHTML = scenario.personas.map(p => {
+      const prob = personaBookProb(p, price, context);
+      const bookPct = Math.round(prob*100);
+      const noPct = 100 - bookPct;
+      const wtp = p.baseWTP + (context.eventSpike ? 6000 : 0) + (context.compCoverage < 0.85 ? -4000 : 0);
+
+      const barCls = (p.color === "emerald") ? "bg-emerald-500" : "bg-rose-500";
+      const borderCls = (p.color === "emerald") ? "border-emerald-500/20" : "border-rose-500/20";
+      const textCls = (p.color === "emerald") ? "text-emerald-300" : "text-rose-300";
+
+      return `
+        <div class="p-3 rounded-xl border ${borderCls} bg-slate-900/40">
+          <div class="flex items-center justify-between">
+            <p class="text-xs font-black text-slate-200">${p.name}</p>
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-950/60 border border-slate-800 text-slate-300 font-bold">WTP ${fmt(Math.round(wtp/1000))}k</span>
+          </div>
+          <div class="mt-3">
+            <div class="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase">
+              <span>BOOK</span><span class="${textCls}">${bookPct}%</span>
+            </div>
+            <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden mt-1">
+              <div class="h-full ${barCls}" style="width:${bookPct}%"></div>
+            </div>
+            <div class="flex items-center justify-between text-[10px] text-slate-500 font-bold uppercase mt-2">
+              <span>NO</span><span class="text-slate-300">${noPct}%</span>
+            </div>
+          </div>
+          <div class="mt-3 text-xs text-slate-400">
+            ${bookPct >= 55 ? "올 가능성 높음 → 가격 인상 여지" : (bookPct >= 45 ? "경계 구간 → 근거/가드레일 필요" : "이탈 위험 → 할인/가치강조")}
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  function updateScene3(animate=true) {
+    const r9 = document.getElementById("recPriceD9");
+    const r11 = document.getElementById("recPriceD11");
+    const m9 = document.getElementById("manualD9");
+
+    const { recPrice: rec9 } = computeDayPrices(9);
+    const { recPrice: rec11 } = computeDayPrices(11);
+
+    if (r9) r9.textContent = fmtWon(rec9);
+    if (r11) r11.textContent = fmtWon(rec11);
+
+    const d9 = scenario.decisions.find(d => d.day === 9);
+    if (m9 && d9) m9.textContent = fmtWon(d9.final);
+  }
+
+  function updateScene4() {
+    const pre = document.getElementById("finalJson");
+    if (!pre) return;
+
+    const nw = normalizeWeights(state.weights);
+
+    const log = {
+      action_id: "AL-2026-001",
+      created_at: (state.actionLogCreatedAt || new Date().toISOString()),
+      selected_day: state.selectedDay,
+      scenario: state.scenarioKey,
+      air_mode: state.airMode,
+      calendar_view: { delta_threshold: state.deltaThreshold, changed_only: state.showChangedOnly },
+      weights: nw,
+      inputs: state.inputs,
+      data_quality: { competitor_coverage: 0.78, warnings: ["competitor_coverage_low", "air_direction_ambiguous"] },
+      decisions: scenario.decisions.map(d => {
+        const { recPrice } = computeDayPrices(d.day);
+        return { day: "D+"+d.day, base_set: state.baselineSetPrice, recommended: Math.round(recPrice), final: Math.round(d.final), reason: d.reason, note: d.note };
+      })
+    };
+
+    if (!state.actionLogCreatedAt) state.actionLogCreatedAt = log.created_at;
+    pre.textContent = JSON.stringify(log, null, 2);
+  }
+
+  function renderScene(sceneId, hardReset) {
+    const step = scenario.steps.find(s => s.id === sceneId) || scenario.steps[0];
+    sceneHeader.querySelector("h3").textContent = step.title;
+    sceneHeader.querySelector("p").textContent = step.desc;
+
+    const sceneChanged = (state.cache.sceneId !== sceneId);
+    if (hardReset || sceneChanged) {
+      // Replace viz HTML (DOM is destroyed here; that's why we keep truth in `state` and re-wire each time)
+      vizPanel.innerHTML = getVizHtml(sceneId);
+      wireScene(sceneId);
+      state.cache.sceneId = sceneId;
+    } else {
+      // lightweight updates
+      if (sceneId === 0) updateScene0();
+      if (sceneId === 2) updateScene2(false);
+      if (sceneId === 3) updateScene3(false);
+      if (sceneId === 4) updateScene4();
+    }
+
+    renderChat(sceneId, hardReset || sceneChanged);
+    renderTyping(sceneId);
+  }
+
+  function updateUI(hardReset=false) {
+    const step = getStepByTime(state.t);
+    highlightTimeline(step.id);
+    updateHeader(step);
+    seek.value = state.t;
+    renderScene(step.id, hardReset);
+  }
+
+  // =========================
+  // Navigation / Time
+  // =========================
+  function jumpTo(sec, hardReset=false) {
+    state.t = clamp(sec, 0, scenario.totalTime);
+    updateUI(hardReset);
+  }
+
+  function jumpStep(delta, hardReset=false) {
+    const cur = getStepByTime(state.t);
+    const nextId = clamp(cur.id + delta, 0, scenario.steps.length - 1);
+    const target = scenario.steps.find(s => s.id === nextId);
+    if (target) jumpTo(target.start, true);
+  }
+
+  function loop(now) {
+    if (!state.playing) return;
+    if (!state.lastUpdate) state.lastUpdate = now;
+    const dt = (now - state.lastUpdate) / 1000;
+    state.lastUpdate = now;
+
+    const prevStep = getStepByTime(state.t).id;
+    state.t += dt * state.speed;
+    if (state.t >= scenario.totalTime) {
+      state.t = scenario.totalTime;
+      state.playing = false;
+      btnPlay.textContent = "Play";
+      updateUI(false);
+      return;
+    }
+
+    const nextStep = getStepByTime(state.t).id;
+    // Auto‑pause at stage boundary (prevents "too fast to follow")
+    if (state.autoPause && nextStep !== prevStep) {
+      state.playing = false;
+      btnPlay.textContent = "Play";
+      state.lastUpdate = null;
+      // Snap exactly to boundary start for clarity
+      const stepObj = scenario.steps.find(s => s.id === nextStep);
+      if (stepObj) state.t = stepObj.start + 0.01;
+      updateUI(true);
+      return;
+    }
+
+    updateUI(false);
+    requestAnimationFrame(loop);
+  }
+
+  function togglePlay() {
+    state.playing = !state.playing;
+    btnPlay.textContent = state.playing ? "Pause" : "Play";
+    state.lastUpdate = null;
+    if (state.playing) requestAnimationFrame(loop);
+  }
+
+  // =========================
+  // Events
+  // =========================
+  btnPlay.addEventListener("click", togglePlay);
+
+  speedControl.addEventListener("change", (e) => {
+    state.speed = parseFloat(e.target.value);
+  });
+
+  autoPauseToggle.addEventListener("change", (e) => {
+    state.autoPause = !!e.target.checked;
+  });
+
+  btnPrev.addEventListener("click", () => jumpStep(-1, true));
+  btnNext.addEventListener("click", () => jumpStep(+1, true));
+
+  seek.addEventListener("input", (e) => {
+    state.t = parseFloat(e.target.value);
+    updateUI(true);
+  });
+
+  window.addEventListener("keydown", (e) => {
+    const activeTag = (document.activeElement && document.activeElement.tagName) ? document.activeElement.tagName.toUpperCase() : "";
+    const isFormFocus = ["INPUT","SELECT","BUTTON","TEXTAREA"].includes(activeTag);
+
+    if (e.code === "Space") {
+      if (isFormFocus) return; // do not hijack space while interacting with controls
+      e.preventDefault();
+      togglePlay();
+    }
+    if (e.key === "ArrowRight") { e.preventDefault(); jumpStep(+1, true); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); jumpStep(-1, true); }
+  });
+
+  // =========================
+  // Init
+  // =========================
+  renderTimeline();
+  // start at stage 0
+  updateUI(true);
+
+})();
+</script>
+</body>
+</html>
