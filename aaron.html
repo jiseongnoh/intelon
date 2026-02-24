@@ -100,6 +100,7 @@
     position: relative;
     box-shadow: none;
     animation: none;
+    transform-origin: center center;
   }
 
   /* Decorative corner lights - hidden for max space */
@@ -604,6 +605,7 @@
   const neonName = document.getElementById('neonName');
   const neonMessage = document.getElementById('neonMessage');
   const mainContainer = document.getElementById('mainContainer');
+  const neonFrame = document.getElementById('neonFrame');
 
   // Auto-fit: measure with unconstrained hidden span, scale to fill
   const measureSpan = document.createElement('span');
@@ -612,13 +614,11 @@
 
   function autoFit(el, minPx, maxPx) {
     const maxW = mainContainer.clientWidth - 16;
-    // Copy font to measurement span
     const style = window.getComputedStyle(el);
     measureSpan.style.fontFamily = style.fontFamily;
     measureSpan.style.fontWeight = style.fontWeight;
     measureSpan.style.fontSize = '100px';
     measureSpan.textContent = el.textContent;
-    // Read true unconstrained text width
     const textW = measureSpan.offsetWidth;
     if (textW <= 0) return;
     let size = Math.floor((maxW / textW) * 100 * 0.92);
@@ -627,15 +627,32 @@
 
   function fitAll() {
     const isL = window.innerWidth > window.innerHeight;
+    // Reset scale first
+    neonFrame.style.transform = 'scale(1)';
+    // Width-fit text
     autoFit(neonName, 40, isL ? 350 : 500);
     autoFit(neonMessage, 30, isL ? 220 : 350);
+
+    // Now scale entire frame to also fill vertical space
+    requestAnimationFrame(() => {
+      const frameH = neonFrame.offsetHeight;
+      const frameW = neonFrame.offsetWidth;
+      const viewH = window.innerHeight * 0.88; // leave 12% breathing room
+      const viewW = window.innerWidth * 0.96;
+      const scaleH = viewH / frameH;
+      const scaleW = viewW / frameW;
+      const scale = Math.min(scaleH, scaleW, 2.5); // cap at 2.5x
+      if (scale > 1.05) {
+        neonFrame.style.transform = `scale(${scale.toFixed(2)})`;
+      }
+    });
   }
 
   // Fit immediately, re-fit after font load, safety timeout
   function initFit() {
     fitAll();
     if (document.fonts && document.fonts.ready) {
-      document.fonts.ready.then(() => { fitAll(); });
+      document.fonts.ready.then(() => fitAll());
     }
     setTimeout(fitAll, 2500);
   }
@@ -694,7 +711,6 @@
 
   // Color theme
   const colorBtns = document.querySelectorAll('.color-btn');
-  const neonFrame = document.getElementById('neonFrame');
   colorBtns.forEach(btn => {
     btn.addEventListener('click', () => {
       colorBtns.forEach(b => b.classList.remove('active'));
