@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>응원 네온사인</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=Bagel+Fat+One&family=Jua&display=swap" rel="stylesheet">
+<style>
+  /* Robust font fallbacks in case CDN fails */
+  @font-face {
+    font-family: 'Bagel Fat One Fallback';
+    src: local('Apple SD Gothic Neo Bold'), local('NanumGothic Bold'), local('sans-serif');
+    font-weight: bold;
+  }
+  @font-face {
+    font-family: 'Jua Fallback';
+    src: local('Apple SD Gothic Neo'), local('NanumGothic'), local('sans-serif');
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --neon-pink: #ff6ec7;
+    --neon-blue: #00d4ff;
+    --neon-green: #39ff14;
+    --neon-yellow: #fff01f;
+    --neon-orange: #ff6600;
+    --neon-purple: #bf00ff;
+    --neon-white: #ffffff;
+  }
+
+  body {
+    background: #0a0a12;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Jua', 'Apple SD Gothic Neo', sans-serif;
+    overflow: hidden;
+    position: relative;
+    touch-action: manipulation;
+  }
+
+  /* Brick wall background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 48px,
+        rgba(60, 40, 30, 0.3) 48px,
+        rgba(60, 40, 30, 0.3) 50px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 98px,
+        rgba(60, 40, 30, 0.25) 98px,
+        rgba(60, 40, 30, 0.25) 100px
+      );
+    background-size: 100px 50px;
+    opacity: 0.5;
+    z-index: 0;
+  }
+
+  /* Ambient glow - disabled for max contrast at distance */
+  .ambient { display: none; }
+
+  /* Stars */
+  .stars {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+  }
+  .star {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle 2s ease-in-out infinite;
+  }
+
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.2; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.5); }
+  }
+
+  /* Main container */
+  .main-container {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    width: 90vw;
+    max-width: 900px;
+    padding: 20px;
+  }
+
+  /* Neon frame */
+  .neon-frame {
+    border: 3px solid rgba(255, 110, 199, 0.4);
+    border-radius: 30px;
+    padding: 40px 30px;
+    position: relative;
+    box-shadow:
+      0 0 15px rgba(255, 110, 199, 0.3),
+      inset 0 0 15px rgba(255, 110, 199, 0.1);
+    animation: framePulse 3s ease-in-out infinite;
+  }
+
+  @keyframes framePulse {
+    0%, 100% { box-shadow: 0 0 15px rgba(255, 110, 199, 0.3), inset 0 0 15px rgba(255, 110, 199, 0.1); }
+    50% { box-shadow: 0 0 30px rgba(255, 110, 199, 0.5), inset 0 0 25px rgba(255, 110, 199, 0.15); }
+  }
+
+  /* Decorative corner lights */
+  .corner {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--neon-yellow);
+    box-shadow: 0 0 10px var(--neon-yellow), 0 0 20px var(--neon-yellow);
+    animation: cornerBlink 1.5s ease-in-out infinite;
+  }
+  .corner-tl { top: -6px; left: -6px; }
+  .corner-tr { top: -6px; right: -6px; animation-delay: 0.3s; }
+  .corner-bl { bottom: -6px; left: -6px; animation-delay: 0.6s; }
+  .corner-br { bottom: -6px; right: -6px; animation-delay: 0.9s; }
+
+  @keyframes cornerBlink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.7); }
+  }
+
+  /* Main neon text */
+  .neon-name {
+    font-family: 'Bagel Fat One', 'Apple SD Gothic Neo', cursive;
+    font-size: clamp(48px, 10vw, 100px);
+    line-height: 1.2;
+    margin-bottom: 10px;
+    transition: all 0.5s ease;
+  }
+
+  .neon-message {
+    font-family: 'Jua', 'Apple SD Gothic Neo', sans-serif;
+    font-size: clamp(28px, 5vw, 56px);
+    line-height: 1.3;
+    margin-top: 10px;
+    transition: all 0.5s ease;
+  }
+
+  /* Color themes */
+  .theme-pink .neon-name, .theme-pink .neon-message {
+    color: var(--neon-pink);
+    text-shadow:
+      0 0 7px var(--neon-pink),
+      0 0 20px var(--neon-pink),
+      0 0 42px var(--neon-pink),
+      0 0 80px var(--neon-pink);
+    animation: neonFlicker 3s ease-in-out infinite;
+  }
+
+  .theme-blue .neon-name, .theme-blue .neon-message {
+    color: var(--neon-blue);
+    text-shadow:
+      0 0 7px var(--neon-blue),
+      0 0 20px var(--neon-blue),
+      0 0 42px var(--neon-blue),
+      0 0 80px var(--neon-blue);
+    animation: neonFlicker 3s ease-in-out infinite;
+  }
+
+  .theme-green .neon-name, .theme-green .neon-message {
+    color: var(--neon-green);
+    text-shadow:
+      0 0 7px var(--neon-green),
+      0 0 20px var(--neon-green),
+      0 0 42px var(--neon-green),
+      0 0 80px var(--neon-green);
+    animation: neonFlicker 3s ease-in-out infinite;
+  }
+
+  .theme-rainbow .neon-name {
+    background: linear-gradient(90deg, var(--neon-pink), var(--neon-yellow), var(--neon-green), var(--neon-blue), var(--neon-purple));
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 20px rgba(255, 110, 199, 0.6)) drop-shadow(0 0 40px rgba(0, 212, 255, 0.4));
+    animation: rainbowShift 3s linear infinite;
+  }
+  .theme-rainbow .neon-message {
+    color: var(--neon-yellow);
+    text-shadow:
+      0 0 7px var(--neon-yellow),
+      0 0 20px var(--neon-yellow),
+      0 0 42px var(--neon-yellow),
+      0 0 80px var(--neon-yellow);
+    animation: neonFlicker 3s ease-in-out infinite;
+  }
+
+  .theme-white .neon-name, .theme-white .neon-message {
+    color: var(--neon-white);
+    text-shadow:
+      0 0 7px var(--neon-white),
+      0 0 20px rgba(255, 255, 255, 0.8),
+      0 0 42px rgba(255, 255, 255, 0.5),
+      0 0 80px rgba(255, 255, 255, 0.3);
+    animation: neonFlicker 3s ease-in-out infinite;
+  }
+
+  @keyframes neonFlicker {
+    0%, 100% { opacity: 1; }
+    8% { opacity: 0.85; }
+    10% { opacity: 1; }
+    50% { opacity: 0.92; }
+    52% { opacity: 1; }
+    80% { opacity: 0.95; }
+    82% { opacity: 1; }
+  }
+
+  @keyframes rainbowShift {
+    0% { background-position: 0% center; }
+    100% { background-position: 200% center; }
+  }
+
+  /* Emoji decorations */
+  .deco-emoji {
+    font-size: clamp(32px, 6vw, 60px);
+    display: inline-block;
+    animation: emojiFloat 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+  }
+  .deco-emoji:nth-child(2) { animation-delay: -0.5s; }
+  .deco-emoji:nth-child(3) { animation-delay: -1s; }
+
+  @keyframes emojiFloat {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-8px) scale(1.1); }
+  }
+
+  /* Emoji row */
+  .emoji-row {
+    margin: 15px 0;
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+  }
+
+  /* Controls - Settings panel */
+  .controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: rgba(10, 10, 18, 0.95);
+    backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 110, 199, 0.3);
+    padding: 15px 20px;
+    transform: translateY(calc(100% - 50px));
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .controls.open {
+    transform: translateY(0);
+  }
+
+  .controls-toggle {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, 0);
+    width: 100%;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Jua', 'Apple SD Gothic Neo', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .controls-toggle .arrow {
+    display: inline-block;
+    transition: transform 0.3s;
+  }
+
+  .controls.open .controls-toggle .arrow {
+    transform: rotate(180deg);
+  }
+
+  .controls-content {
+    padding-top: 50px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-height: 45vh;
+    overflow-y: auto;
+  }
+
+  .control-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .control-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    min-width: 50px;
+    flex-shrink: 0;
+  }
+
+  .name-input {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 110, 199, 0.3);
+    border-radius: 12px;
+    padding: 10px 16px;
+    color: white;
+    font-family: 'Jua', 'Apple SD Gothic Neo', sans-serif;
+    font-size: 18px;
+    outline: none;
+    transition: border-color 0.3s;
+  }
+  .name-input:focus {
+    border-color: var(--neon-pink);
+    box-shadow: 0 0 10px rgba(255, 110, 199, 0.3);
+  }
+  .name-input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Message selector */
+  .msg-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .msg-btn {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 20px;
+    padding: 6px 14px;
+    color: rgba(255, 255, 255, 0.7);
+    font-family: 'Jua', 'Apple SD Gothic Neo', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .msg-btn.active {
+    background: rgba(255, 110, 199, 0.2);
+    border-color: var(--neon-pink);
+    color: white;
+  }
+
+  /* Color buttons */
+  .color-buttons {
+    display: flex;
+    gap: 10px;
+    flex: 1;
+  }
+  .color-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .color-btn.active {
+    border-color: white;
+    transform: scale(1.2);
+    box-shadow: 0 0 15px currentColor;
+  }
+  .color-btn.pink { background: var(--neon-pink); color: var(--neon-pink); }
+  .color-btn.blue { background: var(--neon-blue); color: var(--neon-blue); }
+  .color-btn.green { background: var(--neon-green); color: var(--neon-green); }
+  .color-btn.rainbow { background: linear-gradient(135deg, var(--neon-pink), var(--neon-yellow), var(--neon-green), var(--neon-blue)); color: var(--neon-purple); }
+  .color-btn.white { background: var(--neon-white); color: var(--neon-white); }
+
+  /* Fullscreen button */
+  .fullscreen-btn {
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    padding: 10px 20px;
+    color: rgba(255, 255, 255, 0.8);
+    font-family: 'Jua', 'Apple SD Gothic Neo', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    width: 100%;
+    transition: all 0.3s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .fullscreen-btn:active {
+    background: rgba(255, 110, 199, 0.2);
+  }
+
+  /* Floating hearts animation */
+  .floating-hearts {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+    overflow: hidden;
+  }
+  .heart {
+    position: absolute;
+    font-size: 24px;
+    animation: floatUp 6s linear infinite;
+    opacity: 0;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(100vh) rotate(0deg) scale(0.5); opacity: 0; }
+    10% { opacity: 0.8; }
+    90% { opacity: 0.6; }
+    100% { transform: translateY(-10vh) rotate(360deg) scale(1.2); opacity: 0; }
+  }
+
+  /* Tap to burst effect */
+  .burst {
+    position: fixed;
+    pointer-events: none;
+    z-index: 50;
+    font-size: 30px;
+    animation: burstAnim 1s ease-out forwards;
+  }
+  @keyframes burstAnim {
+    0% { transform: scale(0.5); opacity: 1; }
+    100% { transform: scale(2) translateY(-50px); opacity: 0; }
+  }
+
+  /* Reduced motion for accessibility & battery saving */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  /* Performance mode - toggled via JS */
+  body.perf-mode .ambient,
+  body.perf-mode .stars,
+  body.perf-mode .floating-hearts,
+  body.perf-mode .corner { display: none; }
+  body.perf-mode .neon-frame { box-shadow: none; animation: none; }
+  body.perf-mode body::before { display: none; }
+
+  /* Landscape optimization */
+  @media (orientation: landscape) {
+    .neon-frame { padding: 25px 40px; }
+    .neon-name { font-size: clamp(42px, 8vw, 90px); }
+    .neon-message { font-size: clamp(24px, 4vw, 48px); }
+    .emoji-row { margin: 8px 0; }
+    .deco-emoji { font-size: clamp(28px, 4vw, 48px); }
+  }
+</style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<div class="floating-hearts" id="floatingHearts"></div>
+
+<div class="main-container" id="mainContainer">
+  <div class="neon-frame theme-pink" id="neonFrame">
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+
+    <div class="emoji-row" id="emojiTop">
+      <span class="deco-emoji">⭐</span>
+      <span class="deco-emoji">🌟</span>
+      <span class="deco-emoji">⭐</span>
+    </div>
+
+    <div class="neon-name" id="neonName">우리 아이</div>
+    <div class="neon-message" id="neonMessage">최고! 💕</div>
+
+    <div class="emoji-row" id="emojiBottom">
+      <span class="deco-emoji">🎵</span>
+      <span class="deco-emoji">✨</span>
+      <span class="deco-emoji">🎵</span>
+    </div>
+  </div>
+</div>
+
+<div class="controls" id="controls">
+  <button class="controls-toggle" id="controlsToggle">
+    <span class="arrow">▲</span> 설정
+  </button>
+  <div class="controls-content">
+    <div class="control-row">
+      <span class="control-label">이름</span>
+      <input type="text" class="name-input" id="nameInput" placeholder="아이 이름 입력" maxlength="10">
+    </div>
+    <div class="control-row">
+      <span class="control-label">문구</span>
+      <div class="msg-buttons" id="msgButtons">
+        <button class="msg-btn active" data-msg="최고! 💕" data-emoji-top="⭐,🌟,⭐" data-emoji-bottom="🎵,✨,🎵">최고!</button>
+        <button class="msg-btn" data-msg="사랑해! 💕" data-emoji-top="💖,💗,💖" data-emoji-bottom="💕,❤️,💕">사랑해!</button>
+        <button class="msg-btn" data-msg="화이팅! 🔥" data-emoji-top="💪,🔥,💪" data-emoji-bottom="👏,🎉,👏">화이팅!</button>
+        <button class="msg-btn" data-msg="반짝반짝 빛나는 ✨" data-emoji-top="✨,💫,✨" data-emoji-bottom="🌟,⭐,🌟">반짝반짝!</button>
+        <button class="msg-btn" data-msg="멋진 무대 보여줘~! 🎤" data-emoji-top="🎤,🎶,🎤" data-emoji-bottom="👏,🎊,👏">멋진 무대!</button>
+        <button class="msg-btn" data-msg="You're a Star! ⭐" data-emoji-top="⭐,👑,⭐" data-emoji-bottom="🌈,✨,🌈">Star!</button>
+        <button class="msg-btn" data-msg="실수해도 괜찮아! 💪" data-emoji-top="🤗,💪,🤗" data-emoji-bottom="💕,🌈,💕">괜찮아!</button>
+        <button class="msg-btn" data-msg="세상에서 제일 멋져! 👑" data-emoji-top="👑,💎,👑" data-emoji-bottom="🌟,💖,🌟">제일 멋져!</button>
+      </div>
+    </div>
+    <div class="control-row">
+      <span class="control-label">색상</span>
+      <div class="color-buttons">
+        <button class="color-btn pink active" data-theme="pink"></button>
+        <button class="color-btn blue" data-theme="blue"></button>
+        <button class="color-btn green" data-theme="green"></button>
+        <button class="color-btn rainbow" data-theme="rainbow"></button>
+        <button class="color-btn white" data-theme="white"></button>
+      </div>
+    </div>
+    <button class="fullscreen-btn" id="fullscreenBtn">📱 전체화면 (홈 화면에 추가 권장)</button>
+    <button class="fullscreen-btn" id="perfModeBtn" style="margin-top:6px;">⚡ 절전모드 (발열·배터리 절약)</button>
+    <p style="color:rgba(255,255,255,0.35); font-size:11px; margin-top:10px; line-height:1.5; text-align:center;">
+      💡 <b>iPad 최적 사용법:</b> Safari 공유(↑) → "홈 화면에 추가" → 홈 아이콘으로 실행하면 주소창 없이 전체화면!
+    </p>
+  </div>
+</div>
+
+<script>
+  // Generate stars
+  const starsEl = document.getElementById('stars');
+  for (let i = 0; i < 40; i++) {
+    const star = document.createElement('div');
+    star.className = 'star';
+    star.style.left = Math.random() * 100 + '%';
+    star.style.top = Math.random() * 100 + '%';
+    star.style.animationDelay = Math.random() * 3 + 's';
+    star.style.animationDuration = (1.5 + Math.random() * 2) + 's';
+    starsEl.appendChild(star);
+  }
+
+  // Floating hearts
+  const heartsContainer = document.getElementById('floatingHearts');
+  const heartEmojis = ['💖', '💕', '❤️', '💗', '✨', '🌟', '⭐', '🎵', '💜', '💛'];
+  function createHeart() {
+    const heart = document.createElement('div');
+    heart.className = 'heart';
+    heart.textContent = heartEmojis[Math.floor(Math.random() * heartEmojis.length)];
+    heart.style.left = Math.random() * 100 + '%';
+    heart.style.animationDelay = Math.random() * 2 + 's';
+    heart.style.animationDuration = (4 + Math.random() * 4) + 's';
+    heart.style.fontSize = (16 + Math.random() * 20) + 'px';
+    heartsContainer.appendChild(heart);
+    setTimeout(() => heart.remove(), 8000);
+  }
+  let heartInterval = setInterval(createHeart, 1500);
+
+  // Controls toggle
+  const controls = document.getElementById('controls');
+  const controlsToggle = document.getElementById('controlsToggle');
+  controlsToggle.addEventListener('click', () => {
+    controls.classList.toggle('open');
+  });
+
+  // Name input
+  const nameInput = document.getElementById('nameInput');
+  const neonName = document.getElementById('neonName');
+  nameInput.addEventListener('input', () => {
+    const name = nameInput.value.trim();
+    neonName.textContent = name ? name : '우리 아이';
+  });
+
+  // Message selection
+  const msgButtons = document.querySelectorAll('.msg-btn');
+  const neonMessage = document.getElementById('neonMessage');
+  const emojiTop = document.getElementById('emojiTop');
+  const emojiBottom = document.getElementById('emojiBottom');
+
+  msgButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      msgButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      neonMessage.textContent = btn.dataset.msg;
+
+      const topEmojis = btn.dataset.emojiTop.split(',');
+      const bottomEmojis = btn.dataset.emojiBottom.split(',');
+      emojiTop.innerHTML = topEmojis.map(e => `<span class="deco-emoji">${e}</span>`).join('');
+      emojiBottom.innerHTML = bottomEmojis.map(e => `<span class="deco-emoji">${e}</span>`).join('');
+    });
+  });
+
+  // Color theme
+  const colorBtns = document.querySelectorAll('.color-btn');
+  const neonFrame = document.getElementById('neonFrame');
+  colorBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      colorBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      neonFrame.className = `neon-frame theme-${btn.dataset.theme}`;
+    });
+  });
+
+  // Fullscreen (best effort - may not work on iPadOS Safari)
+  document.getElementById('fullscreenBtn').addEventListener('click', () => {
+    const el = document.documentElement;
+    if (el.requestFullscreen) {
+      el.requestFullscreen().catch(() => {});
+    } else if (el.webkitRequestFullscreen) {
+      el.webkitRequestFullscreen();
+    }
+    controls.classList.remove('open');
+  });
+
+  // Performance mode toggle
+  const perfBtn = document.getElementById('perfModeBtn');
+  perfBtn.addEventListener('click', () => {
+    document.body.classList.toggle('perf-mode');
+    const isPerf = document.body.classList.contains('perf-mode');
+    perfBtn.textContent = isPerf ? '🎨 효과모드 (화려하게)' : '⚡ 절전모드 (발열·배터리 절약)';
+    // Stop/restart heart generation
+    if (isPerf) {
+      clearInterval(heartInterval);
+      heartsContainer.innerHTML = '';
+    } else {
+      heartInterval = setInterval(createHeart, 1500);
+    }
+  });
+
+  // Tap burst effect (pointerdown for instant response on iOS)
+  document.addEventListener('pointerdown', (e) => {
+    if (e.target.closest('.controls')) return;
+    const emojis = ['💖', '✨', '⭐', '🌟', '💕', '🎉'];
+    for (let i = 0; i < 3; i++) {
+      const burst = document.createElement('div');
+      burst.className = 'burst';
+      burst.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      burst.style.left = (e.clientX + (Math.random() - 0.5) * 60) + 'px';
+      burst.style.top = (e.clientY + (Math.random() - 0.5) * 60) + 'px';
+      document.body.appendChild(burst);
+      setTimeout(() => burst.remove(), 1000);
+    }
+  });
+
+  // Wake Lock - 화면 꺼짐 방지 (API + 비디오 폴백)
+  let wakeLock = null;
+  let noSleepVideo = null;
+
+  // 방법1: Wake Lock API (iPad Safari 16.4+ 직접 열기)
+  const requestWakeLock = async () => {
+    if (!('wakeLock' in navigator)) { startVideoFallback(); return; }
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+      console.log('Wake Lock: API active');
+    } catch (err) {
+      console.log(`Wake Lock API failed: ${err.message} → video fallback`);
+      startVideoFallback();
+    }
+  };
+
+  // 방법2: 무음 비디오 루프 (폴백 - 거의 모든 브라우저에서 동작)
+  function startVideoFallback() {
+    if (noSleepVideo) return;
+    noSleepVideo = document.createElement('video');
+    noSleepVideo.setAttribute('playsinline', '');
+    noSleepVideo.setAttribute('muted', '');
+    noSleepVideo.muted = true;
+    noSleepVideo.loop = true;
+    noSleepVideo.style.cssText = 'position:fixed;top:-1px;left:-1px;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1;';
+    // Tiny MP4 (black 1x1 pixel, ~200 bytes base64)
+    noSleepVideo.src = 'data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAAIZnJlZQAAA0BtZGF0AAACrwYF//+r3EXpvebZSLeWLNgg2SPu73gyNjQgLSBjb3JlIDE2NCByMzEwOCBiYWVlNDAwIC0gSC4yNjQvTVBFRy00IEFWQyBjb2RlYyAtIENvcHlsZWZ0IDIwMDMtMjAyMyAtIGh0dHA6Ly93d3cudmlkZW9sYW4ub3JnL3gyNjQuaHRtbCAtIG9wdGlvbnM6IGNhYmFjPTEgcmVmPTMgZGVibG9jaz0xOjA6MCBhbmFseXNlPTB4MzoweDExMyBtZT1oZXggc3VibWU9NyBwc3k9MSBwc3lfcmQ9MS4wMDowLjAwIG1peGVkX3JlZj0xIG1lX3JhbmdlPTE2IGNocm9tYV9tZT0xIHRyZWxsaXM9MSA4eDhkY3Q9MSBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0tMiB0aHJlYWRzPTEgbG9va2FoZWFkX3RocmVhZHM9MSBzbGljZWRfdGhyZWFkcz0wIG5yPTAgZGVjaW1hdGU9MSBpbnRlcmxhY2VkPTAgYmx1cmF5X2NvbXBhdD0wIGNvbnN0cmFpbmVkX2ludHJhPTAgYmZyYW1lcz0zIGJfcHlyYW1pZD0yIGJfYWRhcHQ9MSBiX2JpYXM9MCBkaXJlY3Q9MSB3ZWlnaHRiPTEgb3Blbl9nb3A9MCB3ZWlnaHRwPTIga2V5aW50PTI1MCBrZXlpbnRfbWluPTI1IHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAAD2WIhAA3//728P4FNjuY0AAAAAd0GAAA';
+    document.body.appendChild(noSleepVideo);
+    const playPromise = noSleepVideo.play();
+    if (playPromise) playPromise.catch(() => console.log('Video fallback: autoplay blocked'));
+    console.log('Wake Lock: video fallback active');
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (wakeLock === null && !noSleepVideo) requestWakeLock();
+    }
+  });
+
+  // 첫 터치 후 시작 (autoplay 정책 대응)
+  document.addEventListener('pointerdown', () => {
+    if (!wakeLock && !noSleepVideo) requestWakeLock();
+    if (noSleepVideo && noSleepVideo.paused) noSleepVideo.play().catch(() => {});
+  }, { once: false });
+
+  requestWakeLock();
+</script>
+</body>
+</html>
